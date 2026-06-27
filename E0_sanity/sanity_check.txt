@@ -1,0 +1,9 @@
+img 0: hands=0 primary_fingers=-1 det_score=0.000 best_geom=9.990 per_hand_geom=[] label=-1
+img 1: hands=0 primary_fingers=-1 det_score=0.000 best_geom=9.990 per_hand_geom=[] label=-1
+img 2: hands=0 primary_fingers=-1 det_score=0.000 best_geom=9.990 per_hand_geom=[] label=-1
+img 3: hands=1 primary_fingers=5 det_score=0.775 best_geom=0.000 per_hand_geom=[0.0] label=0
+img 4: hands=1 primary_fingers=5 det_score=0.846 best_geom=0.000 per_hand_geom=[0.0] label=0
+
+captured 22 / 22 blocks
+block channel dims: {"D0R0": 320, "D0R1": 320, "D1R0": 640, "D1R1": 640, "D2R0": 1280, "D2R1": 1280, "D3R0": 1280, "D3R1": 1280, "MidR0": 1280, "MidR1": 1280, "U0R0": 1280, "U0R1": 1280, "U0R2": 1280, "U1R0": 1280, "U1R1": 1280, "U1R2": 1280, "U2R0": 640, "U2R1": 640, "U2R2": 640, "U3R0": 320, "U3R1": 320, "U3R2": 320}
+feats per-image float16 MB ~= 2.02

@@ -1,0 +1,1397 @@
+{
+  "summary": {
+    "n": 100,
+    "elapsed_s": 179.3,
+    "sec_per_img": 1.79,
+    "n_no_hand": 27,
+    "geom_detected_pctl": {
+      "10": 0.0,
+      "25": 0.0,
+      "50": 0.0,
+      "75": 0.0,
+      "90": 0.0,
+      "95": 0.0
+    },
+    "geom_detected_max": 0.375,
+    "spec_scheme_label_counts": {
+      "0.2": {
+        "-1": 27,
+        "0": 72,
+        "1": 1
+      },
+      "0.3": {
+        "-1": 27,
+        "0": 72,
+        "1": 1
+      },
+      "0.5": {
+        "-1": 27,
+        "0": 73,
+        "1": 0
+      },
+      "0.8": {
+        "-1": 27,
+        "0": 73,
+        "1": 0
+      }
+    },
+    "inclusive_scheme_label_counts": {
+      "0.2": {
+        "0": 72,
+        "1": 28
+      },
+      "0.3": {
+        "0": 72,
+        "1": 28
+      },
+      "0.5": {
+        "0": 73,
+        "1": 27
+      },
+      "0.8": {
+        "0": 73,
+        "1": 27
+      }
+    }
+  },
+  "recs": [
+    {
+      "prompt_idx": 0,
+      "seed": 0,
+      "num_hands": 1,
+      "det_score": 0.9681,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9681
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 0,
+      "seed": 1,
+      "num_hands": 1,
+      "det_score": 0.9699,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9699
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 0,
+      "seed": 2,
+      "num_hands": 2,
+      "det_score": 0.9402,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9402,
+        0.5835
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 0,
+      "seed": 3,
+      "num_hands": 1,
+      "det_score": 0.8095,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.8095
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 0,
+      "seed": 4,
+      "num_hands": 1,
+      "det_score": 0.9912,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9912
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 1,
+      "seed": 0,
+      "num_hands": 1,
+      "det_score": 0.9485,
+      "best_geom": 0.0,
+      "finger_count": 2,
+      "per_hand_scores": [
+        0.9485
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 1,
+      "seed": 1,
+      "num_hands": 2,
+      "det_score": 0.9886,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9154,
+        0.9886
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 1,
+      "seed": 2,
+      "num_hands": 2,
+      "det_score": 0.9212,
+      "best_geom": 0.0,
+      "finger_count": 4,
+      "per_hand_scores": [
+        0.9068,
+        0.9212
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.375
+      ]
+    },
+    {
+      "prompt_idx": 1,
+      "seed": 3,
+      "num_hands": 1,
+      "det_score": 0.9106,
+      "best_geom": 0.0,
+      "finger_count": 3,
+      "per_hand_scores": [
+        0.9106
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 1,
+      "seed": 4,
+      "num_hands": 1,
+      "det_score": 0.9823,
+      "best_geom": 0.375,
+      "finger_count": 3,
+      "per_hand_scores": [
+        0.9823
+      ],
+      "per_hand_geom": [
+        0.375
+      ]
+    },
+    {
+      "prompt_idx": 2,
+      "seed": 0,
+      "num_hands": 1,
+      "det_score": 0.984,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.984
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 2,
+      "seed": 1,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 2,
+      "seed": 2,
+      "num_hands": 1,
+      "det_score": 0.8463,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.8463
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 2,
+      "seed": 3,
+      "num_hands": 1,
+      "det_score": 0.997,
+      "best_geom": 0.0,
+      "finger_count": 2,
+      "per_hand_scores": [
+        0.997
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 2,
+      "seed": 4,
+      "num_hands": 1,
+      "det_score": 0.6927,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.6927
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 3,
+      "seed": 0,
+      "num_hands": 1,
+      "det_score": 0.9061,
+      "best_geom": 0.0,
+      "finger_count": 2,
+      "per_hand_scores": [
+        0.9061
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 3,
+      "seed": 1,
+      "num_hands": 1,
+      "det_score": 0.9979,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.9979
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 3,
+      "seed": 2,
+      "num_hands": 1,
+      "det_score": 0.9888,
+      "best_geom": 0.0,
+      "finger_count": 2,
+      "per_hand_scores": [
+        0.9888
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 3,
+      "seed": 3,
+      "num_hands": 2,
+      "det_score": 0.9988,
+      "best_geom": 0.0,
+      "finger_count": 2,
+      "per_hand_scores": [
+        0.9988,
+        0.6492
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 3,
+      "seed": 4,
+      "num_hands": 1,
+      "det_score": 0.6631,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.6631
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 4,
+      "seed": 0,
+      "num_hands": 1,
+      "det_score": 0.7459,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.7459
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 4,
+      "seed": 1,
+      "num_hands": 1,
+      "det_score": 0.7818,
+      "best_geom": 0.0,
+      "finger_count": 3,
+      "per_hand_scores": [
+        0.7818
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 4,
+      "seed": 2,
+      "num_hands": 1,
+      "det_score": 0.7904,
+      "best_geom": 0.0,
+      "finger_count": 4,
+      "per_hand_scores": [
+        0.7904
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 4,
+      "seed": 3,
+      "num_hands": 1,
+      "det_score": 0.8977,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.8977
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 4,
+      "seed": 4,
+      "num_hands": 1,
+      "det_score": 0.9496,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.9496
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 5,
+      "seed": 0,
+      "num_hands": 1,
+      "det_score": 0.9824,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9824
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 5,
+      "seed": 1,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 5,
+      "seed": 2,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 5,
+      "seed": 3,
+      "num_hands": 1,
+      "det_score": 0.9417,
+      "best_geom": 0.0,
+      "finger_count": 4,
+      "per_hand_scores": [
+        0.9417
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 5,
+      "seed": 4,
+      "num_hands": 2,
+      "det_score": 0.9939,
+      "best_geom": 0.0,
+      "finger_count": 4,
+      "per_hand_scores": [
+        0.985,
+        0.9939
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 6,
+      "seed": 0,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 6,
+      "seed": 1,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 6,
+      "seed": 2,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 6,
+      "seed": 3,
+      "num_hands": 1,
+      "det_score": 0.997,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.997
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 6,
+      "seed": 4,
+      "num_hands": 1,
+      "det_score": 0.8862,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.8862
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 7,
+      "seed": 0,
+      "num_hands": 1,
+      "det_score": 0.6362,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.6362
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 7,
+      "seed": 1,
+      "num_hands": 1,
+      "det_score": 0.9885,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9885
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 7,
+      "seed": 2,
+      "num_hands": 2,
+      "det_score": 0.955,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.955,
+        0.9214
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 7,
+      "seed": 3,
+      "num_hands": 1,
+      "det_score": 0.6101,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.6101
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 7,
+      "seed": 4,
+      "num_hands": 1,
+      "det_score": 0.9858,
+      "best_geom": 0.0,
+      "finger_count": 4,
+      "per_hand_scores": [
+        0.9858
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 8,
+      "seed": 0,
+      "num_hands": 2,
+      "det_score": 0.9709,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.9709,
+        0.9373
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 8,
+      "seed": 1,
+      "num_hands": 1,
+      "det_score": 0.9881,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9881
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 8,
+      "seed": 2,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 8,
+      "seed": 3,
+      "num_hands": 1,
+      "det_score": 0.9918,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.9918
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 8,
+      "seed": 4,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 9,
+      "seed": 0,
+      "num_hands": 2,
+      "det_score": 0.9928,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9261,
+        0.9928
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 9,
+      "seed": 1,
+      "num_hands": 2,
+      "det_score": 0.9774,
+      "best_geom": 0.0,
+      "finger_count": 4,
+      "per_hand_scores": [
+        0.7935,
+        0.9774
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 9,
+      "seed": 2,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 9,
+      "seed": 3,
+      "num_hands": 1,
+      "det_score": 0.9828,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9828
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 9,
+      "seed": 4,
+      "num_hands": 4,
+      "det_score": 0.9747,
+      "best_geom": 0.0,
+      "finger_count": 4,
+      "per_hand_scores": [
+        0.9747,
+        0.9734,
+        0.7115,
+        0.8851
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 10,
+      "seed": 0,
+      "num_hands": 1,
+      "det_score": 0.8015,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.8015
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 10,
+      "seed": 1,
+      "num_hands": 1,
+      "det_score": 0.9584,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9584
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 10,
+      "seed": 2,
+      "num_hands": 2,
+      "det_score": 0.9392,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9392,
+        0.7572
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 10,
+      "seed": 3,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 10,
+      "seed": 4,
+      "num_hands": 1,
+      "det_score": 0.9809,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9809
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 11,
+      "seed": 0,
+      "num_hands": 2,
+      "det_score": 0.9919,
+      "best_geom": 0.0,
+      "finger_count": 3,
+      "per_hand_scores": [
+        0.9919,
+        0.8332
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 11,
+      "seed": 1,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 11,
+      "seed": 2,
+      "num_hands": 1,
+      "det_score": 0.9843,
+      "best_geom": 0.1667,
+      "finger_count": 3,
+      "per_hand_scores": [
+        0.9843
+      ],
+      "per_hand_geom": [
+        0.1667
+      ]
+    },
+    {
+      "prompt_idx": 11,
+      "seed": 3,
+      "num_hands": 1,
+      "det_score": 0.9049,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.9049
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 11,
+      "seed": 4,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 12,
+      "seed": 0,
+      "num_hands": 2,
+      "det_score": 0.9948,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9826,
+        0.9948
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 12,
+      "seed": 1,
+      "num_hands": 1,
+      "det_score": 0.9947,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9947
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 12,
+      "seed": 2,
+      "num_hands": 2,
+      "det_score": 0.9805,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9805,
+        0.9754
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 12,
+      "seed": 3,
+      "num_hands": 1,
+      "det_score": 0.8858,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.8858
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 12,
+      "seed": 4,
+      "num_hands": 1,
+      "det_score": 0.9888,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.9888
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 13,
+      "seed": 0,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 13,
+      "seed": 1,
+      "num_hands": 1,
+      "det_score": 0.9984,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9984
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 13,
+      "seed": 2,
+      "num_hands": 1,
+      "det_score": 0.8294,
+      "best_geom": 0.0,
+      "finger_count": 2,
+      "per_hand_scores": [
+        0.8294
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 13,
+      "seed": 3,
+      "num_hands": 2,
+      "det_score": 0.9834,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9834,
+        0.9379
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 13,
+      "seed": 4,
+      "num_hands": 1,
+      "det_score": 0.9778,
+      "best_geom": 0.0,
+      "finger_count": 4,
+      "per_hand_scores": [
+        0.9778
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 14,
+      "seed": 0,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 14,
+      "seed": 1,
+      "num_hands": 2,
+      "det_score": 0.9711,
+      "best_geom": 0.0,
+      "finger_count": 3,
+      "per_hand_scores": [
+        0.9711,
+        0.5363
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 14,
+      "seed": 2,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 14,
+      "seed": 3,
+      "num_hands": 1,
+      "det_score": 0.6011,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.6011
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 14,
+      "seed": 4,
+      "num_hands": 2,
+      "det_score": 0.9993,
+      "best_geom": 0.0,
+      "finger_count": 2,
+      "per_hand_scores": [
+        0.9844,
+        0.9993
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 15,
+      "seed": 0,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 15,
+      "seed": 1,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 15,
+      "seed": 2,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 15,
+      "seed": 3,
+      "num_hands": 1,
+      "det_score": 0.9928,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9928
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 15,
+      "seed": 4,
+      "num_hands": 1,
+      "det_score": 0.8621,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.8621
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 16,
+      "seed": 0,
+      "num_hands": 1,
+      "det_score": 0.9907,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.9907
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 16,
+      "seed": 1,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 16,
+      "seed": 2,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 16,
+      "seed": 3,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 16,
+      "seed": 4,
+      "num_hands": 1,
+      "det_score": 0.9026,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.9026
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 17,
+      "seed": 0,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 17,
+      "seed": 1,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 17,
+      "seed": 2,
+      "num_hands": 1,
+      "det_score": 0.8595,
+      "best_geom": 0.1667,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.8595
+      ],
+      "per_hand_geom": [
+        0.1667
+      ]
+    },
+    {
+      "prompt_idx": 17,
+      "seed": 3,
+      "num_hands": 1,
+      "det_score": 0.925,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.925
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 17,
+      "seed": 4,
+      "num_hands": 1,
+      "det_score": 0.8273,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.8273
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 18,
+      "seed": 0,
+      "num_hands": 1,
+      "det_score": 0.9028,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.9028
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 18,
+      "seed": 1,
+      "num_hands": 2,
+      "det_score": 0.7936,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.7936,
+        0.7119
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 18,
+      "seed": 2,
+      "num_hands": 2,
+      "det_score": 0.9918,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.9918,
+        0.9672
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 18,
+      "seed": 3,
+      "num_hands": 2,
+      "det_score": 0.9985,
+      "best_geom": 0.0,
+      "finger_count": 1,
+      "per_hand_scores": [
+        0.9985,
+        0.9918
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 18,
+      "seed": 4,
+      "num_hands": 1,
+      "det_score": 0.8686,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.8686
+      ],
+      "per_hand_geom": [
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 19,
+      "seed": 0,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 19,
+      "seed": 1,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 19,
+      "seed": 2,
+      "num_hands": 2,
+      "det_score": 0.9996,
+      "best_geom": 0.0,
+      "finger_count": 5,
+      "per_hand_scores": [
+        0.6474,
+        0.9996
+      ],
+      "per_hand_geom": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "prompt_idx": 19,
+      "seed": 3,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    },
+    {
+      "prompt_idx": 19,
+      "seed": 4,
+      "num_hands": 0,
+      "det_score": 0.0,
+      "best_geom": 9.99,
+      "finger_count": -1,
+      "per_hand_scores": [],
+      "per_hand_geom": []
+    }
+  ]
+}

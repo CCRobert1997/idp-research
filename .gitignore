@@ -1,0 +1,37 @@
+# Code-only backup: data, outputs, checkpoints, weights NOT backed up.
+E1_data/
+E4_efficiency/test500/
+E0_sanity/*.png
+samples/
+figures/
+logs/
+models_sd15
+models_clip
+hand_landmarker.task
+
+# keep small measured metrics (JSON/CSV) but never heavy binaries
+**/*.pt
+**/*.pth
+**/*.ckpt
+**/*.safetensors
+**/*.bin
+**/*.npy
+**/*.npz
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.mp4
+**/*.pkl
+**/*.log
+
+# keep results JSON/CSV explicitly
+!results/
+!E2_probes/*.csv
+!E3_ablation/*.csv
+!E4_efficiency/*.csv
+
+# envs / caches
+**/*venv*/
+**/__pycache__/
+.ipynb_checkpoints/
+_download/
