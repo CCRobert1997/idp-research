@@ -33,7 +33,7 @@ IDP under I = "predict early whether the final image will have a well-formed *de
 ## Status (2026-06-27, overnight autonomous run)
 - E0 sanity: PASS (5 imgs, 22/22 blocks captured, 2.02 MB/img fp16).
 - Pilot: DONE (label scheme decided as above).
-- E1 (2000 imgs, ~2.3s/img, ~3.6 GB): RUNNING.
+- E1 DONE (2000 imgs). E2-E5 + figures DONE 2026-06-27 21:33. **Kill-gate: GO** (sig from step1; AUC* 0.84@k14/U1R0; held-out 0.71). See RESULTS.md.
 - Orchestrator `experiments/run_pipeline.sh` (tracked bg) chains: E1 done -> E2 probe (kill-gate)
   -> test500 gen -> E4 efficiency -> E3 ablation -> E5 qualitative -> results/PIPELINE_DONE.txt.
 - Pending: review E2 kill-gate verdict; GitHub remote `CCRobert1997/idp-research` not yet created

@@ -1,0 +1,24 @@
+{
+  "n": 2000,
+  "elapsed_s": 11841.6,
+  "scheme_I_dist": {
+    "0": 1390,
+    "1": 610
+  },
+  "scheme_S_dist": {
+    "-1": 610,
+    "0": 1390,
+    "1": 0
+  },
+  "best": {
+    "step": 14,
+    "block": "U1R0",
+    "auc": 0.84
+  },
+  "first_step_ci_low_gt_0.5": 1,
+  "auc_at_step1_bestblock": 0.7628,
+  "auc_at_step5": 0.7673,
+  "auc_at_step10": 0.7957,
+  "auc_at_step25": 0.8164,
+  "kill_gate": "GO (significant at step 1 <= 25)"
+}

@@ -1,0 +1,20 @@
+{
+  "k_star": 14,
+  "l_star": "U1R0",
+  "test500_n": 500,
+  "raw_defect_rate": 0.27,
+  "probe_auc_heldout": 0.7089,
+  "full_reject_calls": 68.493,
+  "oracle_calls": 55.178,
+  "tau_target": 0.1,
+  "idp_at_target": {
+    "tau": 0.1,
+    "defect_rate": 0.1604,
+    "unet_calls": 59.8908,
+    "fpr": 0.326,
+    "fnr": 0.3481,
+    "abort_rate": 0.414
+  },
+  "no_filter_calls": 50,
+  "savings_vs_full_reject_pct": 12.6
+}
