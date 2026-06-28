@@ -35,3 +35,11 @@ hand_landmarker.task
 **/__pycache__/
 .ipynb_checkpoints/
 _download/
+
+# v2 heavy data
+v2/E1_data/
+v2/E5_heldout/
+v2/_cache/
+v2/figures/
+v2/E6_qual/
+v2/**/*.png
