@@ -1,0 +1,21 @@
+{
+  "n": 5036,
+  "defect_rate": 0.4498,
+  "best": {
+    "step": 1,
+    "block": "D0R1",
+    "auc": 0.8458
+  },
+  "first_step_ci_low_gt_0.5": 1,
+  "auc_step1": 0.8458,
+  "auc_step5": 0.8414,
+  "auc_step10": 0.8417,
+  "auc_step25": 0.8291,
+  "top5_blocks": [
+    "D0R1",
+    "D1R0",
+    "U2R1",
+    "D1R1",
+    "U2R2"
+  ]
+}

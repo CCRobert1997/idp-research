@@ -1,0 +1,6 @@
+probe_type,feature_source,auc,n_params
+logistic,best_block[D0R1]@k1,0.8458,321
+mlp_64,best_block[D0R1]@k1,0.7900,20609
+logistic,concat_22blocks@k1,0.8009,20161
+logistic,final_latent_z0_gap4d,0.5701,5
+logistic,pixel_clip_img,0.8274,513

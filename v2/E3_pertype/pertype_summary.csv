@@ -1,0 +1,7 @@
+defect_type,n_pos,n_neg,first_sig_step,peak_auc,peak_step,peak_block
+hand,1098,2771,1,0.9253,1,U2R2
+face,269,2771,1,0.9015,1,U1R0
+limb,452,2771,1,0.9538,3,U0R0
+count,55,2771,1,0.8576,3,U2R0
+physics,90,2771,1,0.9616,3,U1R0
+text,451,2771,1,0.9696,7,D3R0

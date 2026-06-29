@@ -1,0 +1,76 @@
+IDP v2 finished Mon 29 Jun 2026 03:28:57 UTC
+=== E1.5 reliability ===
+{
+  "n": 500,
+  "pct_agreement": 0.772,
+  "cohen_kappa": 0.5349,
+  "primary_defect_rate": 0.428,
+  "second_defect_rate": 0.432,
+  "method": "primary greedy vs second-pass temp=0.8"
+}
+=== E2 overall ===
+{
+  "n": 5036,
+  "defect_rate": 0.4498,
+  "best": {
+    "step": 1,
+    "block": "D0R1",
+    "auc": 0.8458
+  },
+  "first_step_ci_low_gt_0.5": 1,
+  "auc_step1": 0.8458,
+  "auc_step5": 0.8414,
+  "auc_step10": 0.8417,
+  "auc_step25": 0.8291,
+  "top5_blocks": [
+    "D0R1",
+    "D1R0",
+    "U2R1",
+    "D1R1",
+    "U2R2"
+  ]
+}
+=== E2 layer ranking (top) ===
+block,peak_auc,peak_step
+D0R1,0.84577,1
+D1R0,0.84077,2
+U2R1,0.83899,6
+D1R1,0.83614,6
+U2R2,0.83444,5
+U2R0,0.83127,15
+U3R0,0.83001,4
+
+=== E3 per-type summary (CORE) ===
+defect_type,n_pos,n_neg,first_sig_step,peak_auc,peak_step,peak_block
+hand,1098,2771,1,0.9253,1,U2R2
+face,269,2771,1,0.9015,1,U1R0
+limb,452,2771,1,0.9538,3,U0R0
+count,55,2771,1,0.8576,3,U2R0
+physics,90,2771,1,0.9616,3,U1R0
+text,451,2771,1,0.9696,7,D3R0
+
+=== E4 ablation ===
+probe_type,feature_source,auc,n_params
+logistic,best_block[D0R1]@k1,0.8458,321
+mlp_64,best_block[D0R1]@k1,0.7900,20609
+logistic,concat_22blocks@k1,0.8009,20161
+logistic,final_latent_z0_gap4d,0.5701,5
+logistic,pixel_clip_img,0.8274,513
+
+=== E5 efficiency ===
+{
+  "k_star": 1,
+  "l_star": "D0R1",
+  "n": 503,
+  "raw_defect_rate": 0.4851,
+  "heldout_auc": 0.7609,
+  "full_reject_calls": 97.104,
+  "tau_target": 0.1,
+  "idp_at_target": {
+    "tau": 0.1,
+    "defect_rate": 0.2,
+    "unet_calls": 51.7944,
+    "abort_rate": 0.6421
+  },
+  "savings_vs_full_reject_pct": 46.7
+}

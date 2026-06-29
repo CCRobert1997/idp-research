@@ -1,0 +1,16 @@
+{
+  "k_star": 1,
+  "l_star": "D0R1",
+  "n": 503,
+  "raw_defect_rate": 0.4851,
+  "heldout_auc": 0.7609,
+  "full_reject_calls": 97.104,
+  "tau_target": 0.1,
+  "idp_at_target": {
+    "tau": 0.1,
+    "defect_rate": 0.2,
+    "unet_calls": 51.7944,
+    "abort_rate": 0.6421
+  },
+  "savings_vs_full_reject_pct": 46.7
+}
