@@ -66,6 +66,10 @@ as post-hoc CLIP but available at step 1 + linearly + layer-localized," not "muc
 4. defect_type tags noisy (the binary `defective` is the reliable signal).
 5. Generalization gap 0.846→0.761. CLIP-advantage marginal.
 
+## SIGN-OFF (Shangyu, 2026-06-29)
+Approved: (1) rubric refinement, (2) tempered framing (layer-localization + COUNT exception as the
+lead; de-emphasize per-type timing and the marginal CLIP win). Proceed on this basis.
+
 ## Recommendation
 GO. Lead with: early + linear + layer-localized decodability of structural defects across 6 classes,
 with the COUNT semantic exception and class-specific readout layers as the novel, collision-free

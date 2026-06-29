@@ -17,7 +17,7 @@ don't do. Target AAAI 2027 (abstract 07-20, full 07-27).
 - E2 overall AUC map + layer_ranking; **E3 per-type AUC-vs-step (CORE)**; E4 ablation; E5 early-stop
   demo (held-out 504, seeds 2000.., explicitly a modest downstream app); E6 qualitative.
 
-## ⚠ Rubric deviation (2026-06-28) — NEEDS SIGN-OFF
+## ⚠ Rubric deviation (2026-06-28) — APPROVED by Shangyu 2026-06-29
 The spec's pre-registered rubric ("Be conservative: only mark defective=true if a non-expert would
 clearly notice") made Qwen2.5-VL-7B flag **~0% defects** on a calibration set — it called a blatantly
 garbled "OPEN" storefront sign and a melted crowd-of-faces "clean" (verified by eye). Running 5040
