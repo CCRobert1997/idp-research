@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>扩散模型何时"知道"自己会失败？</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/white.min.css" id="theme">
+<style>
+:root{
+ --ink:#1a2233; --muted:#5b6678; --accent:#1f6feb; --accent2:#0e8a6e;
+ --warn:#b3541e; --bg:#ffffff; --soft:#f4f7fb; --line:#dbe3ee;
+}
+.reveal{font-family:-apple-system,"Segoe UI",Inter,"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif;
+ font-size:30px; color:var(--ink);}
+.reveal h1,.reveal h2,.reveal h3,.reveal h4{color:var(--ink); font-weight:750; letter-spacing:-.01em; text-transform:none; margin-bottom:.35em; line-height:1.15;}
+.reveal h1{font-size:1.9em;} .reveal h2{font-size:1.35em;} .reveal h3{font-size:1.08em; color:var(--accent);}
+.reveal section{text-align:left;}
+.reveal .slides section .fragment.highlight-current-blue.current-fragment{color:var(--accent);}
+.reveal p,.reveal li{line-height:1.4;}
+.reveal ul,.reveal ol{margin-left:1em; width:100%;}
+.reveal li{margin:.28em 0;}
+.reveal strong{color:var(--accent); font-weight:700;}
+.reveal em{color:var(--warn); font-style:normal; font-weight:600;}
+.reveal a{color:var(--accent);}
+.reveal small,.reveal .cite{color:var(--muted); font-size:.62em;}
+
+/* ---- title slide ---- */
+.title-slide{display:flex; flex-direction:column; justify-content:center; height:100%;}
+.title-slide .kicker{color:var(--accent); font-weight:700; letter-spacing:.06em; text-transform:uppercase; font-size:.62em;}
+.title-slide h1{font-size:1.7em; margin:.25em 0;}
+.title-slide .tagline{color:var(--muted); font-size:.82em; max-width:22em;}
+.title-slide .byline{margin-top:1.2em; color:var(--ink); font-size:.7em;}
+.title-slide .venue{color:var(--muted); font-size:.6em;}
+
+/* ---- section divider ---- */
+.divider{background:linear-gradient(135deg,#12233f,#1f6feb); height:100%; display:flex; flex-direction:column; justify-content:center; margin:-40px; padding:40px 80px; border-radius:0;}
+.divider h2, .divider h1, .divider p, .divider .kicker{color:#fff !important;}
+.divider .kicker{opacity:.8; letter-spacing:.08em; text-transform:uppercase; font-size:.6em; font-weight:700;}
+.divider h2{font-size:1.8em; border:none;}
+
+/* ---- callout boxes ---- */
+.box{border-radius:14px; padding:.7em 1em; margin:.5em 0; border:1px solid var(--line); background:var(--soft); font-size:.9em;}
+.box .tag{display:inline-block; font-size:.6em; font-weight:800; letter-spacing:.06em; text-transform:uppercase; padding:.15em .6em; border-radius:20px; margin-bottom:.35em;}
+.intuition{background:#eef5ff; border-color:#cfe0fb;} .intuition .tag{background:var(--accent); color:#fff;}
+.statview{background:#eafaf4; border-color:#c7ecdd;} .statview .tag{background:var(--accent2); color:#fff;}
+.keyidea{background:#fff7ec; border-color:#f3dcbb;} .keyidea .tag{background:var(--warn); color:#fff;}
+.result{background:#f3f0ff; border-color:#ddd4f7;} .result .tag{background:#6b46c1; color:#fff;}
+.deep{background:#fdeef2; border-color:#f6cdd9;} .deep .tag{background:#b3245b; color:#fff;}
+.warnbox{background:#fff4f0; border-color:#f6cdbb;} .warnbox .tag{background:var(--warn); color:#fff;}
+
+/* ---- layout helpers ---- */
+.cols{display:flex; gap:1.1em; align-items:flex-start;}
+.cols > *{flex:1; min-width:0;}
+.center{text-align:center;}
+.big{font-size:1.5em; font-weight:750; color:var(--accent); line-height:1.2;}
+.lead{font-size:1.05em; color:var(--ink);}
+figure{margin:.3em auto; text-align:center;}
+figure img{max-height:46vh; width:auto; border-radius:10px; border:1px solid var(--line); background:#fff;}
+figcaption{color:var(--muted); font-size:.6em; margin-top:.35em;}
+.reveal table{font-size:.68em; margin:.3em auto; border-collapse:collapse; width:100%;}
+.reveal table th{background:#12233f; color:#fff; padding:.35em .5em; font-weight:700;}
+.reveal table td{padding:.3em .5em; border-bottom:1px solid var(--line);}
+.reveal table tr:nth-child(even) td{background:var(--soft);}
+.win{color:var(--accent2); font-weight:700;}
+.reveal .slide-number{background:transparent; color:var(--muted); font-size:14px;}
+.pill{display:inline-block; background:var(--soft); border:1px solid var(--line); border-radius:20px; padding:.1em .7em; font-size:.72em; margin:.15em;}
+.footnote{margin-top:.6em; display:block; clear:both; color:var(--muted); font-size:.5em;}
+kbd{background:#12233f;color:#fff;border-radius:5px;padding:.05em .4em;font-size:.8em;}
+.steps{display:flex;gap:.4em;align-items:center;justify-content:center;flex-wrap:wrap;font-size:.8em;margin:.4em 0;}
+.steps .s{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:.3em .5em;text-align:center;}
+.arrow{color:var(--accent);font-weight:800;}
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<!-- 1. TITLE -->
+<section class="title-slide" data-background-color="#ffffff">
+ <div class="kicker">扩散模型 · 可解释性 · 可预测性</div>
+ <h1>扩散模型何时"知道"自己会失败？</h1>
+ <p class="tagline">一个会画图的 AI，早在图像成形之前，就已经在自己的内部信号里留下了"未来错误"的指纹。我们绘制一张地图：这枚指纹<em>何时</em>、在<em>哪一层</em>出现。</p>
+ <div class="byline"><strong>Anonymous（陈上宇）</strong><br><span class="venue"></span></div>
+</section>
+
+<!-- 2. 30-SECOND VERSION -->
+<section>
+ <h2>30 秒速览</h2>
+ <div class="box intuition"><span class="tag">一句话</span>
+ 会画图的现代 AI 常以特定方式出错——六根手指、乱码招牌、苹果数不对。我们问：<strong>在哪一刻、在模型内部的哪一部分，这个错误就已经可以被预测出来？</strong>答案：从<strong>第一步</strong>开始，用一个<strong>简单的线性分类器</strong>读模型自己的内部数字就能预测；而且<em>不同类型</em>的错误可以从<em>不同的内部层</em>读出。</div>
+ <div class="box statview"><span class="tag">统计学家视角</span>
+ 这本质上是一项<strong>有监督的信号检测研究</strong>。给每次生成打一个二元标签（缺陷 / 干净），在内部特征向量上训一个<strong>逻辑回归</strong>，用 <strong>AUC-ROC</strong> 评分。整篇论文就是一张 AUC 地图，横跨两条轴：<em>时间</em>（去噪步）和<em>深度</em>（哪一层）。</div>
+</section>
+
+<!-- 3. ROADMAP -->
+<section>
+ <h2>路线图</h2>
+ <div class="cols">
+ <div>
+ <div class="box"><strong>第 1 部分 · 从零开始的背景</strong><br><small>什么是会画图的 AI？什么是"扩散"？步、层、激活、探针、AUC——全部从头讲。</small></div>
+ <div class="box"><strong>第 2 部分 · 把问题讲具体</strong><br><small>精确的可预测性问题 + 一个核心 idea。</small></div>
+ <div class="box"><strong>第 3 部分 · 方法</strong><br><small>造一批语料 → 标注缺陷 → 训线性探针 → 从三个角度读 AUC 地图。</small></div>
+ </div>
+ <div>
+ <div class="box"><strong>第 4 部分 · 主结果</strong><br><small>早 / 持续 / 线性 · 类型专属的深度 · 计数例外 · 在第二种架构上复现。</small></div>
+ <div class="box"><strong>第 5 部分 · 更深的检验</strong><br><small>消融、鲁棒性、第二个模型、诚实的人机一致性上限。</small></div>
+ <div class="box"><strong>第 6 部分 · 为何深刻 + 局限 + 要点</strong></div>
+ </div>
+ </div>
+</section>
+
+<!-- ============ PART 1 DIVIDER ============ -->
+<section data-background-color="#12233f">
+ <div class="divider"><div class="kicker">第 1 部分</div><h2>背景：从零开始</h2><p>不预设任何机器学习知识。每个术语第一次出现就解释。</p></div>
+</section>
+
+<!-- 4. what is a text-to-image AI -->
+<section>
+ <h2>什么是"会画图的 AI"？</h2>
+ <p>你打一句话——<em>"一个厨师拿着刀"</em>——程序返回一张此前并不存在的、逼真如照片的图。</p>
+ <div class="box intuition"><span class="tag">直觉</span>
+ 可以把它想成一个巨大的<strong>函数</strong> \( G \)，带有数百万个调好的常数（叫<strong>权重</strong>）。它把<strong>文字 + 一个随机种子</strong>映射成<strong>一张图</strong>：
+ \[ \text{图像} = G(\text{文字},\ \text{随机种子}) \]
+ 换个种子，同样的话就得到不同的图。权重只在训练时拟合一次，用数十亿组图-文对，让 \(G\) 能产出可信的图。</div>
+ <div class="box statview"><span class="tag">统计学家视角</span>
+ \(G\) 是一个用数据最小化损失拟合出的巨型非线性回归。"种子"是从高斯分布中的一次抽样——模型是一个学出来的、从条件分布 \(p(\text{图像}\mid\text{文字})\) 采样的采样器。</div>
+</section>
+
+<!-- 5. what is diffusion -->
+<section>
+ <h2>它怎么画？"扩散" = 一步步去噪</h2>
+ <p>模型<em>不是</em>一笔画完。它从<strong>纯随机雪花点</strong>开始，用 50 步逐步清理干净（下一页画出来）。</p>
+ <div class="box intuition"><span class="tag">直觉</span>
+ 像雕塑家从一块噪声原石出发，用 <strong>50 刀</strong>，把藏在里面的雕像一点点显露出来。每一刀去掉一点随机性。本文研究 <strong>Stable Diffusion 1.5</strong>，用 <strong>\(T=50\) 步</strong>。</div>
+ <div class="box statview"><span class="tag">统计学家视角</span>
+ 每一步是一个<strong>离散化的逆向随机过程</strong>的一次移动：把当前数组朝 \(p(\text{图像}\mid\text{文字})\) 下更高的似然推一下。形式上是一个迭代的、类 MAP 的去噪器。</div>
+</section>
+
+<!-- DIAGRAM 1 · denoising chain -->
+<section>
+ <h2>把去噪链条画出来</h2>
+ <figure>
+ <svg viewBox="0 0 960 278" style="width:100%;height:auto;max-height:44vh" role="img" aria-label="去噪链条">
+  <defs>
+   <marker id="dc1" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5b6678"/></marker>
+   <pattern id="noise1" width="10" height="10" patternUnits="userSpaceOnUse">
+    <rect width="10" height="10" fill="#eef1f6"/>
+    <circle cx="2" cy="2" r="1.3" fill="#8b98ad"/><circle cx="7" cy="6" r="1.3" fill="#a7b3c6"/><circle cx="4" cy="9" r="1.1" fill="#7c89a0"/>
+   </pattern>
+  </defs>
+  <line x1="30" y1="22" x2="932" y2="22" stroke="#5b6678" stroke-width="2" marker-end="url(#dc1)"/>
+  <text x="480" y="14" text-anchor="middle" font-size="16" fill="#5b6678">去噪 —— 每一步去掉一点噪声</text>
+  <g transform="translate(30,42)"><rect width="150" height="170" rx="10" fill="#fff" stroke="#dbe3ee"/><rect width="150" height="170" rx="10" fill="url(#noise1)" opacity="1"/><circle cx="75" cy="58" r="22" fill="#1f6feb" opacity="0"/><rect x="42" y="82" width="66" height="72" rx="22" fill="#1f6feb" opacity="0"/></g>
+  <g transform="translate(215,42)"><rect width="150" height="170" rx="10" fill="#fff" stroke="#dbe3ee"/><rect width="150" height="170" rx="10" fill="url(#noise1)" opacity=".7"/><circle cx="75" cy="58" r="22" fill="#1f6feb" opacity=".3"/><rect x="42" y="82" width="66" height="72" rx="22" fill="#1f6feb" opacity=".3"/></g>
+  <g transform="translate(400,42)"><rect width="150" height="170" rx="10" fill="#fff" stroke="#dbe3ee"/><rect width="150" height="170" rx="10" fill="url(#noise1)" opacity=".45"/><circle cx="75" cy="58" r="22" fill="#1f6feb" opacity=".6"/><rect x="42" y="82" width="66" height="72" rx="22" fill="#1f6feb" opacity=".6"/></g>
+  <g transform="translate(585,42)"><rect width="150" height="170" rx="10" fill="#fff" stroke="#dbe3ee"/><rect width="150" height="170" rx="10" fill="url(#noise1)" opacity=".2"/><circle cx="75" cy="58" r="22" fill="#1f6feb" opacity=".85"/><rect x="42" y="82" width="66" height="72" rx="22" fill="#1f6feb" opacity=".85"/></g>
+  <g transform="translate(770,42)"><rect width="150" height="170" rx="10" fill="#fff" stroke="#0e8a6e"/><circle cx="75" cy="58" r="22" fill="#1f6feb"/><rect x="42" y="82" width="66" height="72" rx="22" fill="#1f6feb"/></g>
+  <line x1="182" y1="127" x2="213" y2="127" stroke="#5b6678" stroke-width="2" marker-end="url(#dc1)"/>
+  <line x1="367" y1="127" x2="398" y2="127" stroke="#5b6678" stroke-width="2" marker-end="url(#dc1)"/>
+  <line x1="552" y1="127" x2="583" y2="127" stroke="#5b6678" stroke-width="2" marker-end="url(#dc1)"/>
+  <line x1="737" y1="127" x2="768" y2="127" stroke="#5b6678" stroke-width="2" marker-end="url(#dc1)"/>
+  <text x="105" y="237" text-anchor="middle" font-size="16" fill="#12233f" font-weight="700">第 1 步</text><text x="105" y="256" text-anchor="middle" font-size="13" fill="#b3541e">纯噪声</text>
+  <text x="290" y="237" text-anchor="middle" font-size="16" fill="#12233f">第 ~12 步</text>
+  <text x="475" y="237" text-anchor="middle" font-size="16" fill="#12233f">第 ~25 步</text>
+  <text x="660" y="237" text-anchor="middle" font-size="16" fill="#12233f">第 ~40 步</text>
+  <text x="845" y="237" text-anchor="middle" font-size="16" fill="#12233f" font-weight="700">第 50 步</text><text x="845" y="256" text-anchor="middle" font-size="13" fill="#0e8a6e">成品</text>
+ </svg>
+ <figcaption>一次生成 = 50 个状态的序列，从纯雪花点（第 1 步）到成品（第 50 步）。我们把第 1 步定为最噪、第 50 步定为最干净。</figcaption>
+ </figure>
+ <div class="box keyidea"><span class="tag">钩子</span>对人眼，第 1 步<em>只是噪声</em>。论文问：最终的错误，是否已经写进了这个噪声状态里？</div>
+</section>
+
+<!-- 6. the trajectory / step 1 is noise -->
+<section>
+ <h2>"轨迹"：一次生成是一段影片，不是一张快照</h2>
+ <div class="cols">
+ <div>
+ <p>每次生成都产出一个 50 个中间状态的<strong>序列</strong>，从噪声（第 1 步）到成品（第 50 步）。我们叫它<strong>去噪轨迹</strong>。</p>
+ <p>关键：<strong>第 1 步在人眼看来就是无法辨认的雪花点</strong>。此时什么都还"不在"。</p>
+ <div class="box keyidea"><span class="tag">钩子</span>
+ 论文的问题就在这里：<strong>模型最终的错误，是否在第 1 步就已经编码好了</strong>——而我们人眼只看到噪声？</div>
+ </div>
+ <div>
+ <figure>
+ <img src="figures/fig5_qualitative.png" alt="第一步噪声 vs 最终图像">
+ <figcaption>上排：<strong>第 1 步</strong>的状态——视觉上是纯噪声。下排：同一次生成的<strong>最终</strong>图像及其失败标签。论断是：一条线性规则读上排，就已能预测下排。</figcaption>
+ </figure>
+ </div>
+ </div>
+</section>
+
+<!-- 7. the UNet, blocks -->
+<section>
+ <h2>模型内部是什么？带"块"的 UNet</h2>
+ <p>每个去噪步都调用一个大网络，即 <strong>UNet</strong>。想象一个 U 形：它先把图像<strong>压缩</strong>成粗略概要，再<strong>展开</strong>回全分辨率。</p>
+ <div class="cols">
+ <div>
+ <div class="box intuition"><span class="tag">直觉</span>
+ <strong>Down（编码器）</strong>块——拉远，抓大局 / 布局。<br>
+ <strong>Mid（瓶颈）</strong>——最压缩、最抽象的概要。<br>
+ <strong>Up（解码器）</strong>块——拉近，补细节。<br>
+ SD1.5 的 UNet 有 <strong>22 个这样的块</strong>（记作 D0R0 … MidR1 … U3R2）。</div>
+ </div>
+ <div>
+ <div class="box statview"><span class="tag">统计学家视角</span>
+ 可以把这些块看成一串<strong>学出来的特征变换</strong>，先降分辨率再升分辨率——有点像多分辨率基（类小波）。"深度" = 哪个块 = 表示有多抽象。这是我们地图的第二条轴。</div>
+ </div>
+ </div>
+ <div class="footnote">命名：D = Down/编码器，Mid = 瓶颈，U = Up/解码器；"R0/R1/R2"是同一 stage 内残差块的编号。</div>
+</section>
+
+<!-- DIAGRAM 2 · UNet blocks + read-out points -->
+<section>
+ <h2>我们在哪里读模型：UNet 的"块"</h2>
+ <figure>
+ <svg viewBox="0 0 960 430" style="width:100%;height:auto;max-height:46vh" role="img" aria-label="UNet 块与读出点">
+  <defs>
+   <marker id="un_a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5b6678"/></marker>
+  </defs>
+  <text x="480" y="24" text-anchor="middle" font-size="16" fill="#b3541e" font-weight="700">读出 · 在每个 (步 k, 块 ℓ) 池化激活 —— 零成本，不加前向</text>
+  <line x1="150" y1="38" x2="850" y2="38" stroke="#b3541e" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <line x1="200" y1="86" x2="850" y2="86" stroke="#c9b39a" stroke-width="1.4" stroke-dasharray="4 4"/>
+  <line x1="320" y1="146" x2="740" y2="146" stroke="#c9b39a" stroke-width="1.4" stroke-dasharray="4 4"/>
+  <line x1="440" y1="206" x2="630" y2="206" stroke="#c9b39a" stroke-width="1.4" stroke-dasharray="4 4"/>
+  <text x="480" y="330" text-anchor="middle" font-size="12" fill="#c9986a">棕色虚线 = 跳跃连接（编码器 → 解码器）</text>
+  <rect x="18" y="188" width="96" height="52" rx="10" fill="#f4f7fb" stroke="#5b6678"/><text x="66" y="212" text-anchor="middle" font-size="14" fill="#12233f">含噪</text><text x="66" y="230" text-anchor="middle" font-size="14" fill="#12233f">潜变量 z_k</text>
+  <g><rect x="150" y="62" width="104" height="50" rx="10" fill="#eef5ff" stroke="#1f6feb"/><text x="202" y="92" text-anchor="middle" font-size="16" fill="#12233f">Down · D0</text><circle cx="202" cy="62" r="5" fill="#b3541e"/><line x1="202" y1="62" x2="202" y2="38" stroke="#b3541e" stroke-width="1.2" stroke-dasharray="3 3"/></g>
+  <g><rect x="270" y="122" width="104" height="50" rx="10" fill="#eef5ff" stroke="#1f6feb"/><text x="322" y="152" text-anchor="middle" font-size="16" fill="#12233f">Down · D1</text><circle cx="322" cy="122" r="5" fill="#b3541e"/><line x1="322" y1="122" x2="322" y2="38" stroke="#b3541e" stroke-width="1.2" stroke-dasharray="3 3"/></g>
+  <g><rect x="390" y="182" width="104" height="50" rx="10" fill="#eef5ff" stroke="#1f6feb"/><text x="442" y="212" text-anchor="middle" font-size="16" fill="#12233f">Down · D3</text><circle cx="442" cy="182" r="5" fill="#b3541e"/><line x1="442" y1="182" x2="442" y2="38" stroke="#b3541e" stroke-width="1.2" stroke-dasharray="3 3"/></g>
+  <g><rect x="465" y="252" width="110" height="50" rx="10" fill="#fff7ec" stroke="#b3541e"/><text x="520" y="282" text-anchor="middle" font-size="16" fill="#12233f">Mid · 瓶颈</text><circle cx="520" cy="252" r="5" fill="#b3541e"/><line x1="520" y1="252" x2="520" y2="38" stroke="#b3541e" stroke-width="1.2" stroke-dasharray="3 3"/></g>
+  <g><rect x="590" y="182" width="104" height="50" rx="10" fill="#eafaf4" stroke="#0e8a6e"/><text x="642" y="212" text-anchor="middle" font-size="16" fill="#12233f">Up · U0</text><circle cx="642" cy="182" r="5" fill="#b3541e"/><line x1="642" y1="182" x2="642" y2="38" stroke="#b3541e" stroke-width="1.2" stroke-dasharray="3 3"/></g>
+  <g><rect x="690" y="122" width="104" height="50" rx="10" fill="#eafaf4" stroke="#0e8a6e"/><text x="742" y="152" text-anchor="middle" font-size="16" fill="#12233f">Up · U1</text><circle cx="742" cy="122" r="5" fill="#b3541e"/><line x1="742" y1="122" x2="742" y2="38" stroke="#b3541e" stroke-width="1.2" stroke-dasharray="3 3"/></g>
+  <g><rect x="790" y="62" width="104" height="50" rx="10" fill="#eafaf4" stroke="#0e8a6e"/><text x="842" y="92" text-anchor="middle" font-size="16" fill="#12233f">Up · U2</text><circle cx="842" cy="62" r="5" fill="#b3541e"/><line x1="842" y1="62" x2="842" y2="38" stroke="#b3541e" stroke-width="1.2" stroke-dasharray="3 3"/></g>
+  <line x1="114" y1="214" x2="150" y2="100" stroke="#5b6678" stroke-width="2" marker-end="url(#un_a)"/>
+  <line x1="254" y1="92" x2="270" y2="140" stroke="#5b6678" stroke-width="2" marker-end="url(#un_a)"/>
+  <line x1="374" y1="152" x2="390" y2="200" stroke="#5b6678" stroke-width="2" marker-end="url(#un_a)"/>
+  <line x1="494" y1="212" x2="470" y2="256" stroke="#5b6678" stroke-width="2" marker-end="url(#un_a)"/>
+  <line x1="575" y1="272" x2="595" y2="222" stroke="#5b6678" stroke-width="2" marker-end="url(#un_a)"/>
+  <line x1="694" y1="200" x2="710" y2="152" stroke="#5b6678" stroke-width="2" marker-end="url(#un_a)"/>
+  <line x1="794" y1="140" x2="810" y2="92" stroke="#5b6678" stroke-width="2" marker-end="url(#un_a)"/>
+  <text x="480" y="392" text-anchor="middle" font-size="14" fill="#5b6678">Down = 编码器（压缩）· Mid = 瓶颈 · Up = 解码器（展开）。SD1.5 共 22 个残差块。</text>
+ </svg>
+ <figcaption>每个去噪步都跑一次 U 形网络。在每个块的输出处（橙点）取值并池化成一个小向量——这正是探针要读的东西。</figcaption>
+ </figure>
+</section>
+
+<!-- 8. activations -->
+<section>
+ <h2>什么是"激活"？</h2>
+ <p>模型处理一步时，每个块都产出一大堆数字，即它的中间输出。这些就是<strong>激活</strong>：模型内部的"草稿"。</p>
+ <div class="box intuition"><span class="tag">直觉</span>
+ 一个块的激活是三维数组（高 × 宽 × 通道）。我们把它压成一个可管理的向量，方法是<strong>对所有空间位置求平均</strong>——<strong>全局平均池化</strong>：
+ \[ \bar{\mathbf f}_k^{\ell} \;=\; \frac{1}{h_\ell w_\ell}\sum_{i,j}\mathbf f_k^{\ell}[i,j] \;\in\; \mathbb{R}^{d_\ell} \]
+ 用文字说：对第 \(k\) 步的第 \(\ell\) 块，取它的特征图，平均成一个长为 \(d_\ell\) 的概要向量——那个 (步, 块) 的"内部指纹"。</div>
+ <div class="box statview"><span class="tag">统计学家视角</span>
+ 池化 = 对每个通道取<strong>空间均值</strong>：一种廉价的、类充分统计量式的降维，压成定长特征向量，于是每个 (步, 块) 都给出一个可回归的协变量向量。<strong>零成本：</strong>张量本就算好了，我们只是读出来。</div>
+</section>
+
+<!-- 9. probing = classifier -->
+<section>
+ <h2>什么是"探针"？内部特征上的分类器</h2>
+ <div class="box statview"><span class="tag">统计学家视角——这就是整套方法</span>
+ <strong>探针</strong>毫不神秘：它就是一个<strong>逻辑回归</strong>。对选定的 (第 \(k\) 步, 第 \(\ell\) 块)，取池化特征向量 \(\bar{\mathbf f}_k^{\ell}\) 作预测变量 \(x\)，缺陷标签 \(y\in\{0,1\}\) 作响应，拟合：
+ \[ \Pr(y=1\mid x)=\sigma(\boldsymbol\beta^\top x + \beta_0),\qquad \sigma(u)=\tfrac{1}{1+e^{-u}} \]
+ 只有 \(d_\ell+1\) 个系数。训练不到一秒。</div>
+ <div class="box intuition"><span class="tag">为什么叫"探针"、为什么用线性</span>
+ 我们不是在造一个更好的生成器，而是在<strong>审问这个表示</strong>：如果一条<em>线性</em>规则就能从内部向量读出未来的失败，那这条信息<strong>本就已经在模型里线性地铺好了</strong>——不是靠某个花哨分类器费力挖出来的。线性性是科学论断，不是图省事。</div>
+</section>
+
+<!-- DIAGRAM 3 · probing pipeline -->
+<section>
+ <h2>把"探测"画成一条流水线</h2>
+ <figure>
+ <svg viewBox="0 0 960 300" style="width:100%;height:auto;max-height:44vh" role="img" aria-label="探测流水线">
+  <defs>
+   <marker id="pp_a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5b6678"/></marker>
+  </defs>
+  <text x="405" y="34" text-anchor="middle" font-size="15" fill="#5b6678">二元目标 · 这张图最终会有缺陷吗？ y ∈ {0,1}</text>
+  <rect x="24" y="96" width="196" height="96" rx="10" fill="#eef5ff" stroke="#1f6feb"/>
+  <text x="122" y="132" text-anchor="middle" font-size="17" fill="#12233f" font-weight="700">激活</text>
+  <text x="122" y="156" text-anchor="middle" font-size="15" fill="#12233f">池化向量</text>
+  <text x="122" y="178" text-anchor="middle" font-size="16" fill="#1f6feb">f̄ (第 k 步, 第 ℓ 块)</text>
+  <rect x="300" y="86" width="210" height="116" rx="10" fill="#eafaf4" stroke="#0e8a6e"/>
+  <text x="405" y="126" text-anchor="middle" font-size="17" fill="#12233f" font-weight="700">逻辑回归</text>
+  <text x="405" y="152" text-anchor="middle" font-size="16" fill="#0e8a6e">σ(βᵀx + β₀)</text>
+  <text x="405" y="178" text-anchor="middle" font-size="13" fill="#5b6678">d+1 个权重 · 训练 &lt;1 秒</text>
+  <rect x="590" y="96" width="150" height="96" rx="10" fill="#f4f7fb" stroke="#5b6678"/>
+  <text x="665" y="134" text-anchor="middle" font-size="16" fill="#12233f">分数</text>
+  <text x="665" y="162" text-anchor="middle" font-size="15" fill="#12233f">P(缺陷) ∈ [0,1]</text>
+  <rect x="812" y="80" width="126" height="132" rx="10" fill="#f3f0ff" stroke="#6b46c1"/>
+  <text x="875" y="104" text-anchor="middle" font-size="16" fill="#6b46c1" font-weight="700">AUC-ROC</text>
+  <line x1="836" y1="196" x2="836" y2="120" stroke="#8a7bb8" stroke-width="1.2"/>
+  <line x1="836" y1="196" x2="918" y2="196" stroke="#8a7bb8" stroke-width="1.2"/>
+  <path d="M836,196 Q846,130 918,120" fill="none" stroke="#6b46c1" stroke-width="2.5"/>
+  <line x1="836" y1="196" x2="918" y2="120" stroke="#b9adda" stroke-width="1" stroke-dasharray="3 3"/>
+  <line x1="220" y1="144" x2="298" y2="144" stroke="#5b6678" stroke-width="2.4" marker-end="url(#pp_a)"/>
+  <line x1="510" y1="144" x2="588" y2="144" stroke="#5b6678" stroke-width="2.4" marker-end="url(#pp_a)"/>
+  <line x1="740" y1="144" x2="810" y2="144" stroke="#5b6678" stroke-width="2.4" marker-end="url(#pp_a)"/>
+  <text x="405" y="238" text-anchor="middle" font-size="14" fill="#5b6678">对每个 (步 k, 块 ℓ) 重复 → 每格一个 AUC → AUC 地图。</text>
+ </svg>
+ <figcaption>探针 = 在池化激活上训一个简单线性分类器来预测缺陷标签，用 AUC 打分。若<em>线性</em>规则就能成功，说明信息已经在模型里线性铺好。</figcaption>
+ </figure>
+</section>
+
+<!-- 10. AUC / ROC -->
+<section>
+ <h2>怎么给探针打分？AUC-ROC</h2>
+ <div class="cols">
+ <div>
+ <p>探针输出一个 \([0,1]\) 的<strong>分数</strong>："这次生成最终有缺陷的可能性有多大？"我们把所有留出集样本按分数排序，看这个排序把真缺陷和真干净分得多开。</p>
+ <div class="box statview"><span class="tag">统计学家视角</span>
+ <strong>AUC = ROC 曲线下面积</strong> = \(\Pr(\text{随机一个缺陷的分} > \text{随机一个干净的分})\)。
+ <ul>
+ <li><strong>0.5</strong> = 抛硬币，没有信号。</li>
+ <li><strong>1.0</strong> = 完美分开。</li>
+ <li>与阈值无关，对类别不平衡稳健——各类缺陷率差异大时正好合适。</li>
+ </ul></div>
+ </div>
+ <div>
+ <div class="box keyidea"><span class="tag">这样读这些数字</span>
+ 本讲每个头条数字都是 AUC。<br><br>
+ <strong>0.846</strong> = "给一个缺陷、一个干净的生成，探针把缺陷那个排得更高的概率是 85%。"<br><br>
+ 我们把 AUC 对步、对块画出来——那张曲面<em>就是</em>这篇论文。</div>
+ <div class="box"><span class="tag" style="background:var(--muted);color:#fff">显著性</span><small>在测试集上做自助法置信区间；"显著" = AUC 的 CI 不含 0.5。</small></div>
+ </div>
+ </div>
+</section>
+
+<!-- 11. the failure modes -->
+<section>
+ <h2>哪种失败？六类"结构性缺陷"</h2>
+ <p>不是模糊或审美差——而是任何外行都会指出"不对"的<strong>结构性</strong>错误：</p>
+ <div class="cols">
+ <div>
+ <span class="pill"><strong>手 hand</strong>——手指畸形</span>
+ <span class="pill"><strong>脸 face</strong>——多余/不对称的五官</span>
+ <span class="pill"><strong>肢 limb</strong>——肢体数目/拓扑错</span><br>
+ <span class="pill"><strong>计数 count</strong>——物体数目不对</span>
+ <span class="pill"><strong>物理 physics</strong>——不可能的几何、融合物</span>
+ <span class="pill"><strong>文字 text</strong>——乱码字形</span>
+ <div class="box intuition"><span class="tag">直觉</span>这些是模型内部对<strong>结构</strong>的账本出错的证据——哪怕整体场景乍看合理。</div>
+ </div>
+ <div>
+ <figure>
+ <img src="figures/fig1_teaser.png" alt="六类缺陷示例" style="max-height:44vh">
+ <figcaption>每类一张生成示例。每类都有专门设计来<em>诱发</em>该失败的 prompt 集（如手、人群脸、冲刺运动员、店面招牌）。</figcaption>
+ </figure>
+ </div>
+ </div>
+</section>
+
+<!-- 12. what's known vs open -->
+<section>
+ <h2>此前已知的——和未知的</h2>
+ <div class="box statview"><span class="tag">已知（前人工作）</span>
+ 扩散激活对模型<strong>做对的东西</strong>是<strong>线性可读的</strong>：线性解码器能恢复物体分割、对应关系、甚至场景深度——而且深度在去噪中<strong>出奇地早</strong>就可读（Beyond Surface Statistics）。所以"探中间状态"本身是成熟工具。</div>
+ <div class="box warnbox"><span class="tag">也有并行工作（2026）</span>
+ 两篇很新的工作从早期状态预测图像的<strong>整体质量</strong>以省算力（Probe-Select、Diffusion Probe）。<em>作者明确说明：探内部以预测最终结果这个"裸机制"，不是他们的主张。</em></div>
+ <div class="box keyidea"><span class="tag">本文攻的开放问题</span>
+ 没人问过<strong>失败</strong>（不是正确性、不是单一质量分）是否可读——以及这种可读性如何<strong>随失败类型</strong>、<strong>随深度</strong>变化，并沿<strong>整条</strong>轨迹追踪。这就是缺口。</div>
+</section>
+
+<!-- ============ PART 2 DIVIDER ============ -->
+<section data-background-color="#12233f">
+ <div class="divider"><div class="kicker">第 2 部分</div><h2>把问题讲具体</h2></div>
+</section>
+
+<!-- 13. the concrete question -->
+<section>
+ <h2>精确的问题</h2>
+ <p class="big">在 50 步作画过程的哪一刻、在 22 个内部块的哪一个里，模型<em>就已经决定</em>要犯一个结构性错误？</p>
+ <div class="box intuition"><span class="tag">对统计学家重新表述</span>
+ 造一个 AUC 值的矩阵，横跨 <strong>(步 \(k\) = 1…50) × (块 \(\ell\) = 1…22)</strong>。两个问题：
+ <ul>
+ <li><strong>何时</strong>——横读各步：AUC 多早升过 0.5？是中途见顶还是全程平坦？</li>
+ <li><strong>何处</strong>——纵读各块：哪些层携带信号，而且答案是否<em>随失败类型</em>而变？</li>
+ </ul></div>
+</section>
+
+<!-- 14. key idea -->
+<section>
+ <h2>唯一的核心 idea</h2>
+ <div class="box keyidea"><span class="tag">核心 idea</span>
+ <span class="big" style="color:var(--warn)">失败是表示的一种线性、早发、按深度组织的属性。</span><br><br>
+ 模型内部信号从<strong>第一去噪步</strong>起就含有其最终结构性错误的<strong>简单、线性可读</strong>印记——而且<strong>每种错误住在不同深度</strong>。这是一张失败如何结晶的机制<em>地图</em>，不是一个新的图像生成器。</div>
+ <div class="box statview"><span class="tag">为什么"线性"是关键</span>
+ 如果<strong>逻辑回归在同样的特征上击败神经网络分类器</strong>（确实如此：0.846 vs 0.790），那信息就不是藏着的——它<strong>本就线性地铺好了</strong>。这是关于模型<em>表示几何</em>的论断，正是可解释性论文想立的。</div>
+</section>
+
+<!-- ============ PART 3 DIVIDER ============ -->
+<section data-background-color="#12233f">
+ <div class="divider"><div class="kicker">第 3 部分</div><h2>方法：地图如何绘出</h2></div>
+</section>
+
+<!-- 15. pipeline -->
+<section>
+ <h2>流水线，诚实的四步</h2>
+ <div class="steps" style="font-size:.85em">
+ <div class="s"><strong>1. 生成</strong><br><small>5,036 张图<br>6 类<br>存下全部 50 步</small></div><span class="arrow">→</span>
+ <div class="s"><strong>2. 标注</strong><br><small>一个视觉语言<br>裁判把每张标<br>缺陷 / 干净</small></div><span class="arrow">→</span>
+ <div class="s"><strong>3. 探测</strong><br><small>在每个 (步, 块)<br>训逻辑回归<br>= 50 × 22 次拟合</small></div><span class="arrow">→</span>
+ <div class="s"><strong>4. 读地图</strong><br><small>AUC 对步、<br>对块、<br>对失败类型</small></div>
+ </div>
+ <div class="box intuition"><span class="tag">聪明又廉价的地方</span>
+ 抽特征<strong>不增加</strong>任何额外的模型前向——激活在正常生成时本就算好了，我们只是池化并存下。探针是一秒钟的逻辑回归。重成本只有一次性的图像生成 + 标注。</div>
+ <div class="box statview"><span class="tag">设计</span>分层 <strong>80 / 10 / 10</strong> 训练/验证/测试划分，固定种子 42，用 AUC-ROC 做指标——干净的有监督评估协议。</div>
+</section>
+
+<!-- 16. corpus -->
+<section>
+ <h2>第 1 步——语料（真实数字）</h2>
+ <div class="cols">
+ <div>
+ <p><strong>72 prompt × 70 种子 = 5,040</strong> 张图；5,036 张通过标签置信度过滤。整体结构性缺陷率 <strong>44.9%</strong>（设计上近乎类别均衡）。</p>
+ <div class="box intuition"><span class="tag">为何各类缺陷率差这么多</span>Prompt 是被<em>刻意设计</em>来压各种模式的。冲刺运动员压肢体；店面招牌压文字；三苹果场景压计数。所以基础缺陷率是信息，不是噪声。</div>
+ </div>
+ <div>
+ <table>
+ <tr><th>类别</th><th>图数</th><th>缺陷数</th><th>缺陷率</th></tr>
+ <tr><td>肢 limb</td><td>840</td><td>671</td><td>79.9%</td></tr>
+ <tr><td>手 hand</td><td>840</td><td>584</td><td>69.5%</td></tr>
+ <tr><td>文字 text</td><td>840</td><td>510</td><td>60.7%</td></tr>
+ <tr><td>脸 face</td><td>840</td><td>227</td><td>27.0%</td></tr>
+ <tr><td>计数 count</td><td>840</td><td>180</td><td>21.4%</td></tr>
+ <tr><td>物理 physics</td><td>840</td><td>93</td><td>11.1%</td></tr>
+ <tr><td><strong>合计</strong></td><td><strong>5040</strong></td><td><strong>2265</strong></td><td><strong>44.9%</strong></td></tr>
+ </table>
+ <div class="footnote">附录表：各 prompt 类别的语料统计（VLM 裁判）。</div>
+ </div>
+ </div>
+</section>
+
+<!-- 16b. example prompts per category -->
+<section>
+ <h2>第 1 步，讲具体——<em>诱发</em>每类缺陷的 prompt</h2>
+ <p>六类中每类有 <strong>12 条手写 prompt</strong>；每条 prompt 用 <strong>70 个不同随机种子</strong>渲染（12 × 70 = 每类 840 张图）。几条真实的 prompt：</p>
+ <div class="cols" style="font-size:.78em">
+ <div>
+ <div class="box"><span class="tag" style="background:var(--accent);color:#fff">手 hand</span>"厨师拿着刀" · "两人握手" · "手在键盘上打字"</div>
+ <div class="box"><span class="tag" style="background:var(--accent);color:#fff">肢 limb</span>"腾空的舞者" · "平衡木上的体操运动员" · "跳水运动员入水"</div>
+ <div class="box"><span class="tag" style="background:var(--accent);color:#fff">计数 count</span>"桌上三个红苹果" · "一排五个酒杯" · "四只猫坐在一起"</div>
+ </div>
+ <div>
+ <div class="box"><span class="tag" style="background:var(--accent2);color:#fff">脸 face</span>"一群人的脸" · "双胞胎站在一起" · "眼睛细节丰富的人"</div>
+ <div class="box"><span class="tag" style="background:var(--accent2);color:#fff">物理 physics</span>"一摞盘子" · "章鱼抓着物体" · "一团缠绕的电缆"</div>
+ <div class="box"><span class="tag" style="background:var(--accent2);color:#fff">文字 text</span>"写着 OPEN 的招牌" · "书名为 ADVENTURE 的封面" · "写 STOP 的路牌"</div>
+ </div>
+ </div>
+ <div class="footnote">Prompt 被刻意挑来压一种失败模式——多物场景压计数、店面招牌压文字、冲刺身体压肢体。完整 72 条清单见论文附录。</div>
+</section>
+
+<!-- 16c. the judge rubric, verbatim -->
+<section>
+ <h2>第 2 步，讲具体——裁判到底被问什么</h2>
+ <p>裁判模型——<strong>Qwen2.5-VL-7B</strong>，本地运行、贪心解码——看一张成品图，必须以 JSON 回答一张固定评分表：</p>
+ <div class="box" style="background:#0f1b2d;color:#dce6f5;border-color:#22344f;font-family:ui-monospace,Menlo,monospace;font-size:.72em;line-height:1.6">
+ <div style="color:#7fd1b9">// 每张图一条 JSON 判定</div>
+ <strong style="color:#7aa9f4">defective</strong> —— 有任何明显结构性缺陷吗？（畸形解剖、身体部件数目错、融合物、不可能几何、乱码文字）—— <span style="color:#e8a06a">忽略纯风格 / 模糊</span><br>
+ <strong style="color:#7aa9f4">defect_types</strong> —— {hand, face, limb, count, physics, text} 的子集<br>
+ <strong style="color:#7aa9f4">severity</strong> —— 0 无 · 1 轻 · 2 明显 · 3 灾难<br>
+ <strong style="color:#7aa9f4">confidence</strong> —— 0–1 &nbsp;·&nbsp; <strong style="color:#7aa9f4">note</strong> —— 自由文本
+ </div>
+ <div class="box intuition"><span class="tag">最要紧的那句指令</span>"<strong>保守</strong>——只有外行都会清楚注意到时才标缺陷。"只保留<strong>置信度 ≥ 0.6</strong> 的标签（仅丢 <strong>5,040 里的 4</strong> 条）；头条论断靠<strong>二元</strong>判定。</div>
+</section>
+
+<!-- 17. VLM judge + honesty -->
+<section>
+ <h2>第 2 步——标注，把诚实摆在前面</h2>
+ <p>一个<strong>视觉语言裁判</strong>（能读图并答问的 AI——这里是 Qwen2.5-VL-7B）按固定评分表把每张成品标为缺陷 / 干净。</p>
+ <div class="box statview"><span class="tag">统计学家视角——标签有噪声，作者直说</span>
+ 他们像任何严谨的测量研究一样审计<strong>评分者间信度</strong>：
+ <ul>
+ <li>裁判 vs 自身（跑两遍）：<strong>77.2% 一致，Cohen's \(\kappa=0.53\)</strong>——<em>中等</em>。</li>
+ <li>裁判 vs <strong>盲标人类</strong>（100 张）：仅 <strong>52% 一致，\(\kappa=0.11\)</strong>——<em>弱</em>。</li>
+ </ul></div>
+ <div class="box warnbox"><span class="tag">作为实质性局限报告，不是脚注</span>
+ 所以他们明确只主张预测一个 <strong>VLM 判定的</strong>缺陷——一个可扩展但依赖标注者的目标——并用最可靠的<strong>二元</strong>信号做头条数字。这种坦诚正是统计学家想看到的。</div>
+</section>
+
+<!-- 17b. the label audit, in numbers -->
+<section>
+ <h2>标签审计，用数字说（为何 κ=0.11 是诚实，不是致命）</h2>
+ <div class="cols">
+ <div>
+ <div class="box statview"><span class="tag">两次审计</span>
+ <strong>裁判 vs 自身</strong>（500 张，贪心 vs 温度 0.8）：77.2% 一致，κ=0.53；二元缺陷率几乎不动——<strong>42.8% vs 43.2%</strong>。<br><br>
+ <strong>裁判 vs 盲标人类</strong>（100 张，一位作者，隐藏裁判标签）：仅 <strong>52%</strong> 一致，κ=0.11。</div>
+ </div>
+ <div>
+ <div class="box warnbox"><span class="tag">分歧在哪、为什么</span>
+ 人类标了 <strong>79</strong> 张缺陷，裁判只标 <strong>43</strong> 张。人类标而裁判放过的 42 张里：
+ <ul>
+ <li><strong>裁判偏宽松</strong>——漏了人群脸和乱码文字缺陷，</li>
+ <li><strong>协议缺口</strong>——人类<em>看不到 prompt</em>，无法核查物体数目，</li>
+ <li>以及<strong>更严的人类阈值</strong>。</li>
+ </ul></div>
+ </div>
+ </div>
+ <div class="box keyidea"><span class="tag">诚实的后果</span>他们只主张预测一个 <strong>VLM 判定的</strong>缺陷，并依赖稳定的<strong>二元</strong>信号——分歧写在正文里，没埋进附录。</div>
+</section>
+
+<!-- 18. linear probe formal -->
+<section>
+ <h2>第 3 步——探针，形式化</h2>
+ <p>对每个 (第 \(k\) 步, 第 \(\ell\) 块)，在池化向量上训一个逻辑回归探针：</p>
+ <p>\[ p_k^{\ell}:\ \mathbb{R}^{d_\ell}\to[0,1],\qquad p_k^{\ell}(x)=\sigma(\boldsymbol\beta^\top x+\beta_0) \]</p>
+ <ul>
+ <li><strong>输入</strong> \(x=\bar{\mathbf f}_k^{\ell}\)：第 \(\ell\) 块在第 \(k\) 步的池化激活。</li>
+ <li><strong>输出</strong>：该次生成最终结构性缺陷的概率。</li>
+ <li><strong>参数</strong>：仅 \(d_\ell+1\) 个。故意不加隐藏层。</li>
+ </ul>
+ <div class="box keyidea"><span class="tag">关键方法选择</span>
+ 工具刻意选<strong>最简单的</strong>，好让全研究中变化的是<strong>被探测的表示</strong>——而不是分类器的聪明程度。MLP 探针只作为<em>消融</em>（对照）出现。</div>
+</section>
+
+<!-- 18b. walk-through: training ONE probe -->
+<section>
+ <h2>手把手：从头到尾训<em>一个</em>探针</h2>
+ <figure>
+ <svg viewBox="0 0 960 300" style="width:100%;height:auto;max-height:44vh" role="img" aria-label="训练一个探针的流水线">
+  <defs>
+   <marker id="w1_a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5b6678"/></marker>
+  </defs>
+  <text x="480" y="22" text-anchor="middle" font-size="15" fill="#b3541e" font-weight="700">选地图上的一个格子：第 1 步，块 D0R1</text>
+  <rect x="12" y="52" width="182" height="150" rx="10" fill="#eef5ff" stroke="#1f6feb"/>
+  <text x="103" y="78" text-anchor="middle" font-size="14" fill="#12233f" font-weight="700">数据</text>
+  <text x="103" y="104" text-anchor="middle" font-size="13" fill="#12233f">5,036 次生成</text>
+  <text x="103" y="124" text-anchor="middle" font-size="13" fill="#12233f">每次：池化向量</text>
+  <text x="103" y="142" text-anchor="middle" font-size="13" fill="#1f6feb">f̄（维 d）+ 标签 y</text>
+  <text x="103" y="168" text-anchor="middle" font-size="12" fill="#5b6678">y=1 缺陷</text>
+  <text x="103" y="185" text-anchor="middle" font-size="12" fill="#5b6678">y=0 干净</text>
+  <rect x="228" y="52" width="170" height="150" rx="10" fill="#f4f7fb" stroke="#5b6678"/>
+  <text x="313" y="78" text-anchor="middle" font-size="14" fill="#12233f" font-weight="700">分层划分</text>
+  <text x="313" y="98" text-anchor="middle" font-size="12" fill="#5b6678">（种子 42）</text>
+  <rect x="244" y="112" width="138" height="24" rx="5" fill="#cfe0fb"/><text x="313" y="129" text-anchor="middle" font-size="12" fill="#12233f">训练 ≈ 4,029</text>
+  <rect x="244" y="142" width="70" height="22" rx="5" fill="#e6edf6"/><text x="279" y="158" text-anchor="middle" font-size="11" fill="#12233f">验证 504</text>
+  <rect x="320" y="142" width="62" height="22" rx="5" fill="#e6edf6"/><text x="351" y="158" text-anchor="middle" font-size="11" fill="#12233f">测试 503</text>
+  <text x="313" y="185" text-anchor="middle" font-size="11" fill="#5b6678">各份缺陷比例相同</text>
+  <rect x="432" y="52" width="170" height="150" rx="10" fill="#eafaf4" stroke="#0e8a6e"/>
+  <text x="517" y="78" text-anchor="middle" font-size="14" fill="#12233f" font-weight="700">在训练集上拟合</text>
+  <text x="517" y="106" text-anchor="middle" font-size="14" fill="#0e8a6e">σ(βᵀx + β₀)</text>
+  <text x="517" y="132" text-anchor="middle" font-size="12" fill="#12233f">逻辑回归</text>
+  <text x="517" y="152" text-anchor="middle" font-size="12" fill="#12233f">d+1 个权重</text>
+  <text x="517" y="180" text-anchor="middle" font-size="12" fill="#5b6678">训练 &lt; 1 秒</text>
+  <rect x="636" y="52" width="150" height="150" rx="10" fill="#f4f7fb" stroke="#5b6678"/>
+  <text x="711" y="78" text-anchor="middle" font-size="14" fill="#12233f" font-weight="700">给测试集打分</text>
+  <text x="711" y="104" text-anchor="middle" font-size="12" fill="#12233f">503 次生成各</text>
+  <text x="711" y="124" text-anchor="middle" font-size="12" fill="#12233f">→ P(缺陷)</text>
+  <text x="711" y="150" text-anchor="middle" font-size="12" fill="#5b6678">按分排序，</text>
+  <text x="711" y="167" text-anchor="middle" font-size="12" fill="#5b6678">对照真值</text>
+  <rect x="820" y="70" width="128" height="114" rx="10" fill="#f3f0ff" stroke="#6b46c1"/>
+  <text x="884" y="112" text-anchor="middle" font-size="15" fill="#6b46c1" font-weight="700">测试 AUC</text>
+  <text x="884" y="150" text-anchor="middle" font-size="24" fill="#6b46c1" font-weight="800">0.846</text>
+  <line x1="196" y1="127" x2="226" y2="127" stroke="#5b6678" stroke-width="2.2" marker-end="url(#w1_a)"/>
+  <line x1="400" y1="127" x2="430" y2="127" stroke="#5b6678" stroke-width="2.2" marker-end="url(#w1_a)"/>
+  <line x1="604" y1="127" x2="634" y2="127" stroke="#5b6678" stroke-width="2.2" marker-end="url(#w1_a)"/>
+  <line x1="788" y1="127" x2="818" y2="127" stroke="#5b6678" stroke-width="2.2" marker-end="url(#w1_a)"/>
+ </svg>
+ <figcaption>一个探针 = 一个 (步, 块) 格子。锁定第 1 步 / 块 D0R1，把 5,036 次生成划分，只在训练集上拟合逻辑回归，给未碰过的测试集打分，读出 AUC——这个格子是 0.846。</figcaption>
+ </figure>
+</section>
+
+<!-- 18c. reading an AUC from zero -->
+<section>
+ <h2>从零读懂一个 AUC——一个手算小例子</h2>
+ <div class="cols">
+ <div>
+ <p>设探针给 <strong>3 个缺陷</strong>、<strong>3 个干净</strong>的留出样本打分：</p>
+ <table style="font-size:.7em">
+ <tr><th>样本</th><th>真值</th><th>分数</th></tr>
+ <tr><td>A</td><td>缺陷</td><td>0.91</td></tr>
+ <tr><td>B</td><td>缺陷</td><td>0.66</td></tr>
+ <tr><td>C</td><td>干净</td><td>0.60</td></tr>
+ <tr><td>D</td><td>缺陷</td><td>0.55</td></tr>
+ <tr><td>E</td><td>干净</td><td>0.40</td></tr>
+ <tr><td>F</td><td>干净</td><td>0.20</td></tr>
+ </table>
+ </div>
+ <div>
+ <div class="box statview"><span class="tag">数一致的配对</span>组成全部 <strong>3 × 3 = 9</strong> 个 (缺陷, 干净) 配对。AUC = 缺陷那个分更高的比例。<br>
+ A &gt; C,E,F ✓✓✓ · B &gt; C,E,F ✓✓✓ · D &gt; E,F ✓✓ 但 D &lt; C ✗ → <strong>9 里中 8</strong>。<br>
+ <strong>AUC = 8/9 ≈ 0.89。</strong></div>
+ <div class="box keyidea"><span class="tag">所以真实的 0.846 意思是…</span>在真实 503 个测试样本的每个缺陷/干净配对里，探针把缺陷那个排得更高的概率是 <strong>84.6%</strong>。0.5 = 抛硬币；1.0 = 完美。</div>
+ </div>
+ </div>
+</section>
+
+<!-- 18d. the full sweep -->
+<section>
+ <h2>处处都做一遍——整张扫描，很便宜</h2>
+ <div class="box intuition"><span class="tag">整张地图怎么建</span>把这套单探针配方在<strong>每个 (步, 块) 格子</strong>上重复：池化标签要 <strong>50 步 × 22 块 = 1,100 个探针</strong>——再按每类缺陷各来一遍。每个都是在<strong>已经算好</strong>的特征上做的 <strong>&lt; 1 秒</strong> 逻辑回归。</div>
+ <div class="box statview"><span class="tag">成本究竟在哪</span>昂贵的一次性步骤是生成 + 标注这 5,036 张图。分析本身——池化激活、拟合约 1,100 个小回归——几乎免费。这正是它是一个<strong>刻画工具</strong>、而非要训练的新模型的原因。</div>
+ <div class="box keyidea"><span class="tag">产出</span>1,100 个 AUC → 22 × 50 的 <strong>AUC 地图</strong>；用每步最优块 AUC*(k) 概括，读<strong>起始</strong>（何时）与<strong>深度</strong>（何处）。</div>
+</section>
+
+<!-- 19. three views of the map -->
+<section>
+ <h2>第 4 步——从三个角度读 AUC 地图</h2>
+ <div class="box"><span class="tag" style="background:var(--accent);color:#fff">视角 1 · AUC 地图（何时 &amp; 何处）</span>
+ \(50\times 22\) 的测试 AUC 矩阵。用"每步最优块"曲线概括 \(\ \mathrm{AUC}^*(k)=\max_\ell \mathrm{AUC}(k,\ell)\)。横读 → <strong>起始步</strong>（多早）；纵读 → <strong>哪些层</strong>。</div>
+ <div class="box"><span class="tag" style="background:var(--accent2);color:#fff">视角 2 · 类型分辨读出（核心视角）</span>
+ 对<strong>每类缺陷</strong>重跑一遍。正例 = 类别 \(c\) 的缺陷生成；追踪 \(\mathrm{AUC}_c^*(k)\)，记录每类的<strong>峰值块</strong> \(\ell^{*(c)}\)。这揭示深度结构。</div>
+ <div class="box"><span class="tag" style="background:#6b46c1;color:#fff">视角 3 · 一个应用 · 早停止</span>
+ 把最优探针放进循环：去噪到第 \(k^*\) 步，打分，若预测有缺陷就<strong>重采样</strong>——廉价地早早掐掉坏生成。</div>
+</section>
+
+<!-- DIAGRAM 4 · AUC heatmap schematic -->
+<section>
+ <h2>AUC 地图长什么样（示意）</h2>
+ <figure>
+ <svg viewBox="0 0 960 400" style="width:100%;height:auto;max-height:46vh" role="img" aria-label="AUC 热力图示意">
+  <defs>
+   <marker id="hm_a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5b6678"/></marker>
+   <linearGradient id="hm_leg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#e6edf6"/><stop offset=".5" stop-color="#93bbf5"/><stop offset="1" stop-color="#1f6feb"/></linearGradient>
+  </defs>
+  <text x="20" y="200" font-size="15" fill="#12233f" transform="rotate(-90 20 200)" text-anchor="middle">块（深度）ℓ</text>
+  <text x="500" y="392" text-anchor="middle" font-size="15" fill="#12233f">去噪步 k （1 = 最噪 → 50 = 最干净）</text>
+  <text x="120" y="82" text-anchor="end" font-size="14" fill="#5b6678">U2</text>
+  <text x="120" y="132" text-anchor="end" font-size="14" fill="#5b6678">U0</text>
+  <text x="120" y="182" text-anchor="end" font-size="14" fill="#5b6678">Mid</text>
+  <text x="120" y="232" text-anchor="end" font-size="14" fill="#5b6678">D1</text>
+  <text x="120" y="282" text-anchor="end" font-size="14" fill="#5b6678">D0R0</text>
+  <rect x="130" y="58" width="88" height="46" fill="#1f6feb"/><rect x="220" y="58" width="88" height="46" fill="#1f6feb"/><rect x="310" y="58" width="88" height="46" fill="#1f6feb"/><rect x="400" y="58" width="88" height="46" fill="#4a8bf0"/><rect x="490" y="58" width="88" height="46" fill="#4a8bf0"/><rect x="580" y="58" width="88" height="46" fill="#5a93ef"/><rect x="670" y="58" width="88" height="46" fill="#7aa9f4"/><rect x="760" y="58" width="88" height="46" fill="#93bbf5"/>
+  <rect x="130" y="108" width="88" height="46" fill="#1f6feb"/><rect x="220" y="108" width="88" height="46" fill="#1f6feb"/><rect x="310" y="108" width="88" height="46" fill="#4a8bf0"/><rect x="400" y="108" width="88" height="46" fill="#4a8bf0"/><rect x="490" y="108" width="88" height="46" fill="#5a93ef"/><rect x="580" y="108" width="88" height="46" fill="#7aa9f4"/><rect x="670" y="108" width="88" height="46" fill="#93bbf5"/><rect x="760" y="108" width="88" height="46" fill="#93bbf5"/>
+  <rect x="130" y="158" width="88" height="46" fill="#4a8bf0"/><rect x="220" y="158" width="88" height="46" fill="#4a8bf0"/><rect x="310" y="158" width="88" height="46" fill="#4a8bf0"/><rect x="400" y="158" width="88" height="46" fill="#5a93ef"/><rect x="490" y="158" width="88" height="46" fill="#5a93ef"/><rect x="580" y="158" width="88" height="46" fill="#7aa9f4"/><rect x="670" y="158" width="88" height="46" fill="#7aa9f4"/><rect x="760" y="158" width="88" height="46" fill="#93bbf5"/>
+  <rect x="130" y="208" width="88" height="46" fill="#1f6feb"/><rect x="220" y="208" width="88" height="46" fill="#4a8bf0"/><rect x="310" y="208" width="88" height="46" fill="#4a8bf0"/><rect x="400" y="208" width="88" height="46" fill="#5a93ef"/><rect x="490" y="208" width="88" height="46" fill="#7aa9f4"/><rect x="580" y="208" width="88" height="46" fill="#7aa9f4"/><rect x="670" y="208" width="88" height="46" fill="#93bbf5"/><rect x="760" y="208" width="88" height="46" fill="#93bbf5"/>
+  <rect x="130" y="258" width="88" height="46" fill="#c3d8f7"/><rect x="220" y="258" width="88" height="46" fill="#c3d8f7"/><rect x="310" y="258" width="88" height="46" fill="#93bbf5"/><rect x="400" y="258" width="88" height="46" fill="#93bbf5"/><rect x="490" y="258" width="88" height="46" fill="#c3d8f7"/><rect x="580" y="258" width="88" height="46" fill="#c3d8f7"/><rect x="670" y="258" width="88" height="46" fill="#e6edf6"/><rect x="760" y="258" width="88" height="46" fill="#e6edf6"/>
+  <rect x="128" y="56" width="92" height="250" fill="none" stroke="#b3541e" stroke-width="3" stroke-dasharray="6 4"/>
+  <text x="174" y="330" text-anchor="middle" font-size="13" fill="#b3541e" font-weight="700">第 1 步就已很亮</text>
+  <text x="174" y="322" text-anchor="middle" font-size="12" fill="#5b6678">1</text><text x="534" y="322" text-anchor="middle" font-size="12" fill="#5b6678">25</text><text x="804" y="322" text-anchor="middle" font-size="12" fill="#5b6678">50</text>
+  <rect x="892" y="58" width="20" height="196" fill="url(#hm_leg)" stroke="#dbe3ee"/>
+  <text x="922" y="66" font-size="12" fill="#12233f">0.85</text>
+  <text x="922" y="160" font-size="12" fill="#12233f">0.70</text>
+  <text x="922" y="252" font-size="12" fill="#12233f">0.50</text>
+  <text x="902" y="278" text-anchor="middle" font-size="12" fill="#5b6678">AUC</text>
+ </svg>
+ <figcaption>真实结果的示意：行 = 块，列 = 步，越亮越可预测。地图从第 1 列（模型"早就知道"）起就亮、并持续亮，只有最细的编码器块 D0R0 偏暗。</figcaption>
+ </figure>
+</section>
+
+<!-- 20. early abort formula -->
+<section>
+ <h2>视角 3——早停止循环（应用，不是重点）</h2>
+ <div class="cols">
+ <div>
+ <p>在第 \(k^*\) 步跑探针；若分数 &gt; 阈值 \(\tau\)，中止并换新种子重采。每张被接受图像的期望模型调用数：</p>
+ <p style="font-size:.8em">\[ \mathbb{E}[\text{calls}]=\frac{\rho k^*+\mathrm{FPR}(1{-}\rho)k^*+\big(1{-}\rho{-}\mathrm{FPR}(1{-}\rho)\big)T}{1-\rho-\mathrm{FPR}(1-\rho)} \]</p>
+ <div class="box statview"><span class="tag">用文字说</span>\(\rho\) = 缺陷率，FPR = 探针假阳率，\(T=50\)。被中止的生成只花 \(k^*\) 步而非 50 步；公式就是一个接受/拒绝循环的期望成本。</div>
+ </div>
+ <div>
+ <div class="box keyidea"><span class="tag">妙处</span>因为信号在<strong>第 1 步</strong>就有，\(k^*=1\)：一次中止只花 50 步里的<strong>一步</strong>。掐掉坏生成几乎<strong>免费</strong>。</div>
+ <div class="box warnbox"><span class="tag">诚实</span>他们用<strong>留出</strong> AUC（0.761）而非分布内峰值（0.846）部署——把真实世界的数字摆在前面。</div>
+ </div>
+ </div>
+</section>
+
+<!-- DIAGRAM 5 · early-abort Pareto schematic -->
+<section>
+ <h2>为何早停止有用（权衡示意）</h2>
+ <figure>
+ <svg viewBox="0 0 820 430" style="width:100%;height:auto;max-height:46vh" role="img" aria-label="早停止 Pareto 示意">
+  <defs>
+   <marker id="pa_a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5b6678"/></marker>
+  </defs>
+  <line x1="90" y1="360" x2="90" y2="40" stroke="#5b6678" stroke-width="2" marker-end="url(#pa_a)"/>
+  <line x1="90" y1="360" x2="770" y2="360" stroke="#5b6678" stroke-width="2" marker-end="url(#pa_a)"/>
+  <text x="30" y="200" font-size="14" fill="#12233f" transform="rotate(-90 30 200)" text-anchor="middle">被接受图像的缺陷率</text>
+  <text x="430" y="404" text-anchor="middle" font-size="14" fill="#12233f">算力 · 每张接受图像的 UNet 调用数</text>
+  <text x="120" y="392" text-anchor="middle" font-size="12" fill="#5b6678">~50</text>
+  <text x="581" y="392" text-anchor="middle" font-size="12" fill="#5b6678">~97</text>
+  <text x="76" y="365" text-anchor="end" font-size="12" fill="#5b6678">0%</text>
+  <text x="76" y="73" text-anchor="end" font-size="12" fill="#5b6678">50%</text>
+  <path d="M110,69 C150,150 130,220 128,240 C200,300 420,352 581,360" fill="none" stroke="#1f6feb" stroke-width="3"/>
+  <circle cx="110" cy="69" r="7" fill="#5b6678"/><text x="122" y="60" font-size="13" fill="#12233f">不过滤 (48.5%, 50)</text>
+  <g><line x1="119" y1="59" x2="137" y2="77" stroke="#b3245b" stroke-width="2.5"/><line x1="137" y1="59" x2="119" y2="77" stroke="#b3245b" stroke-width="2.5"/></g><text x="146" y="72" font-size="13" fill="#b3245b">随机中止 (48.6%, 51.8) —— 无增益</text>
+  <circle cx="128" cy="240" r="8" fill="#1f6feb"/><text x="144" y="245" font-size="14" fill="#1f6feb" font-weight="700">IDP 早停止 (20%, 51.8)</text>
+  <circle cx="581" cy="360" r="7" fill="#0e8a6e"/><text x="570" y="345" text-anchor="end" font-size="13" fill="#0e8a6e">全拒绝采样 (0%, 97.1)</text>
+  <circle cx="119" cy="360" r="6" fill="none" stroke="#5b6678" stroke-width="2"/><text x="132" y="352" font-size="12" fill="#5b6678">oracle (0%, 50.9)</text>
+  <text x="470" y="120" text-anchor="middle" font-size="14" fill="#5b6678">越靠左下越好</text>
+  <text x="470" y="142" text-anchor="middle" font-size="13" fill="#5b6678">（更少调用、更少缺陷）</text>
+ </svg>
+ <figcaption>因为探针在第 1 步就触发，中止一次坏生成只花 50 步里的约 1 步。IDP 几乎在同等算力下压低被接受图像的缺陷率；同预算的随机中止毫无用处——省来自探针，而非"早停"本身。</figcaption>
+ </figure>
+</section>
+
+<!-- ============ PART 4 DIVIDER ============ -->
+<section data-background-color="#12233f">
+ <div class="divider"><div class="kicker">第 4 部分</div><h2>主结果</h2><p>三根支柱——每根都配真实图。</p></div>
+</section>
+
+<!-- 21. finding 1 fig2 -->
+<section>
+ <h2>支柱 1——早、持续、线性</h2>
+ <figure>
+ <img src="figures/fig2_overall_auc.png" alt="整体 AUC 地图与最优块曲线">
+ <figcaption><strong>左：</strong>AUC 地图——行 = 22 块，列 = 50 步，越亮越可预测。几乎整张网格都亮（0.77–0.85）；只有最细的编码器块（D0R0，底行）在最早几步偏暗。<strong>右：</strong>每步最优块 AUC 及自助法带——<strong>第 1 步 0.846</strong>，缓降到第 50 步 <strong>0.80</strong>。从第 1 步起就高于随机（0.5，虚线）。</figcaption>
+ </figure>
+ <div class="box result"><span class="tag">结果</span>缺陷<strong>早早定型、始终可读</strong>——<em>不是</em>中途见顶。0.846（第 1 步）→ 0.842（第 5 步）→ 0.829（第 25 步）→ 0.80（第 50 步）。</div>
+</section>
+
+<!-- 21b. the baselines, concretely -->
+<section>
+ <h2>我们与谁比——三个诚实的基线</h2>
+ <div class="box"><span class="tag" style="background:var(--muted);color:#fff">随机 = 0.500</span>地板。一个无信号的探针，区分缺陷与干净并不比抛硬币强。</div>
+ <div class="box statview"><span class="tag">事后 CLIP = 0.827</span>公平的<strong>对手</strong>：在<em>成品</em>图的 CLIP 特征上训一个逻辑回归——最强的"只看成品图"检测器。如果我们第 1 步的<em>内部</em>探针只是<strong>持平</strong>它，那就是我们对自己立的诚实标杆。</div>
+ <div class="box warnbox"><span class="tag">最终潜变量 z₀ = 0.570</span>一个<strong>对照</strong>：原始 4 维输出潜变量，没有学出特征。近乎随机——证明信号住在 UNet 的<em>学出</em>激活里，而不在像素本身。</div>
+</section>
+
+<!-- 22. ablation table -->
+<section>
+ <h2>支柱 1 磨锋——消融</h2>
+ <table>
+ <tr><th>探针</th><th>特征来源</th><th>参数</th><th>AUC</th></tr>
+ <tr><td><strong>线性</strong></td><td>最优块 D0R1 @ 第 1 步</td><td>321</td><td><strong class="win">0.846</strong></td></tr>
+ <tr><td>MLP（64 隐单元）</td><td>最优块 D0R1 @ 第 1 步</td><td>20,609</td><td>0.790</td></tr>
+ <tr><td>线性</td><td>拼接全部 22 块</td><td>20,161</td><td>0.801</td></tr>
+ <tr><td>线性</td><td>最终潜变量 \(z_0\)（4 维）</td><td>5</td><td>0.570</td></tr>
+ <tr><td>线性</td><td>事后 CLIP（成品图）</td><td>513</td><td>0.827</td></tr>
+ <tr><td><em>随机</em></td><td>—</td><td>—</td><td>0.500</td></tr>
+ </table>
+ <div class="box statview"><span class="tag">线性 &gt; MLP</span>一个大 64 倍的神经网反而<strong>更差</strong>（0.790）。多余的容量在<em>过拟合</em>；信号确实是线性的——这是"属性在表示里、不在探针里"的最干净证据。</div>
+</section>
+
+<!-- 22b. ablation takeaways -->
+<section>
+ <h2>支柱 1 磨锋——消融意味着什么</h2>
+ <div class="box statview"><span class="tag">局部 &gt; 全局</span>单个好块（0.846）胜过拼接全部 22 块（0.801）。把整网池起来反而<em>稀释</em>信号——信号局部于某个块。</div>
+ <div class="box result"><span class="tag">持平，如实报告</span>第 1 步内部（0.846）≈ 用 CLIP 读<strong>成品</strong>图（0.827）。同样准，但第 1 步就有、线性、且带按深度分辨的账本。</div>
+ <div class="box warnbox"><span class="tag">还有一个对照</span>原始最终潜变量 \(z_0\) 近乎无信息（0.570）：信号住在 UNet 的<strong>学出特征</strong>里，不在像素里。</div>
+</section>
+
+<!-- 23. finding 2 fig3 -->
+<section>
+ <h2>支柱 2——每种失败住在不同深度</h2>
+ <figure>
+ <img src="figures/fig3_pertype_auc.png" alt="各类型 AUC vs 步" style="max-height:44vh">
+ <figcaption>各类 AUC vs 步。六类中五类高且平（0.90–0.97），全部从第 1 步起显著。<strong>计数（红）</strong>是唯一的例外——最低且下降。</figcaption>
+ </figure>
+ <div class="box result"><span class="tag">核心结果</span>时间曲线彼此重叠——有信息的轴不是<em>何时</em>，而是<strong>何处</strong>：每种缺陷在<strong>不同的块</strong>见顶（下一页）。</div>
+</section>
+
+<!-- 23a. reading the per-type table -->
+<section>
+ <h2>读这张类型表——先说一个细节</h2>
+ <div class="box statview"><span class="tag">缺陷是多标签的</span>一张图可以同时带<strong>多个</strong>缺陷——一张肢体 prompt 的图也可能有坏手。所以一类的正例是<em>跨所有 prompt</em>统计的，不只来自它自己的 prompt 集。这就是为什么<strong>手有 1,098 个正例</strong>，尽管手的 prompt 只生成了 840 张图。</div>
+ <div class="box intuition"><span class="tag">比较保持公平</span>每个按类探针都复用<strong>同一批 2,771 个</strong>无缺陷生成作负例，只有正例在变。所以各类型 AUC 直接可比。</div>
+ <div class="box warnbox"><span class="tag">样本不足的行，已标明</span><strong>计数（55）</strong>与<strong>物理（90）</strong>正例少——CI 宽——所以我们主打<em>定性</em>规律（计数最低且下降），而非精确数值。</div>
+</section>
+
+<!-- 23b. finding 2 table -->
+<section>
+ <h2>支柱 2——按深度分辨的读出地图</h2>
+ <table>
+ <tr><th>类别</th><th>n<sub>正</sub></th><th>峰值 AUC</th><th>峰值步</th><th>峰值块</th></tr>
+ <tr><td>文字 text</td><td>451</td><td>0.970</td><td>7</td><td>D3R0（瓶颈）</td></tr>
+ <tr><td>物理 physics</td><td>90</td><td>0.962</td><td>3</td><td>U1R0</td></tr>
+ <tr><td>肢 limb</td><td>452</td><td>0.954</td><td>3</td><td>U0R0</td></tr>
+ <tr><td>手 hand</td><td>1098</td><td>0.925</td><td>1</td><td>U2R2</td></tr>
+ <tr><td>脸 face</td><td>269</td><td>0.902</td><td>1</td><td>U1R0</td></tr>
+ <tr><td>计数 count</td><td>55</td><td>0.858</td><td>3</td><td>U2R0</td></tr>
+ </table>
+ <div class="box result"><span class="tag">核心结果</span>峰值<strong>块随类型而变</strong>：文字来自深瓶颈，手/肢来自解码器块，脸来自中段解码器。一张<strong>按深度分辨</strong>的地图，标出每种缺陷在哪儿被表示——这是质量预测器给不出的分析。</div>
+</section>
+
+<!-- 24. counting exception -->
+<section>
+ <h2>支柱 3——计数例外（那条线索）</h2>
+ <div class="box result"><span class="tag">结果</span>
+ 物体<strong>计数</strong>缺陷<strong>既</strong>最难解码（峰值 0.858 vs 0.90–0.97），<strong>又</strong>是<em>唯一</em>一类可解码性随去噪<strong>下降</strong>的：<strong>0.86 → 0.72</strong>。</div>
+ <div class="box intuition"><span class="tag">为何这是可解释的，而非噪声</span>
+ "有几个苹果"是一个<strong>全局、语义</strong>属性。我们的特征是<em>空间平均</em>后的局部激活——擅长"这只手畸形吗？"（局部），拙于"正好是三个吗？"（全局）。而且模型似乎<strong>很晚才敲定物体数目</strong>。所以它的信号随局部细节变清晰而<em>消退</em>——和局部缺陷相反。</div>
+ <div class="box warnbox"><span class="tag">诚实提醒</span>计数与物理<strong>样本不足</strong>（仅 55 与 90 个正例；CI 宽）。他们主打<em>定性</em>例外——最低且下降——而非其精确数值。</div>
+</section>
+
+<!-- 24b. SD3.5 setup, concretely -->
+<section>
+ <h2>第二个模型，讲具体——SD3.5，一个 DiT</h2>
+ <div class="cols">
+ <div>
+ <div class="box intuition"><span class="tag">不同的骨干</span>SD3.5 是一个 <strong>MMDiT</strong>——<em>Transformer</em>，不是 UNet——用<strong>整流流（rectified flow）跑 T=28 步</strong>采样。不是 22 个残差块，而是钩 <strong>24 个 transformer 块</strong>，取每块的图像流隐藏态、<strong>在其 token 上做平均池化</strong>。</div>
+ </div>
+ <div>
+ <div class="box statview"><span class="tag">同样协议，公平对齐</span>相同 prompt、相同裁判、相同线性探针配方。步被<strong>归一化到 [0,1]</strong>，让 28 步的 DiT 与 50 步的 UNet 共用一条轴。这里裁判自一致性更高（<strong>κ=0.73</strong> vs 0.53）。</div>
+ </div>
+ </div>
+ <div class="box result"><span class="tag">一个干净得多的模型</span>在 <strong>4,436 张图</strong>上整体缺陷率仅 <strong>3.1%</strong>（只有 <strong>139</strong> 张缺陷）——所以按类探针只对样本充足的标签可行：整体、计数（n=90）、文字（n=35）。</div>
+</section>
+
+<!-- 25. cross-arch fig6 -->
+<section>
+ <h2>它在<em>另一种</em>架构上复现（SD3.5，一个 DiT）</h2>
+ <figure>
+ <img src="figures/fig6_cross_auc.png" alt="跨架构 AUC vs 归一化步">
+ <figcaption>最优块 AUC vs <strong>归一化</strong>步，UNet（SD1.5，蓝）与基于 Transformer 的 DiT（SD3.5，红）。两者都从第一步起显著、都平坦、都不中途见顶。这套刻画<strong>并非 UNet 专属</strong>。</figcaption>
+ </figure>
+ <div class="box result"><span class="tag">跨架构结果</span>在 DiT 上探针达 <strong>AUC 0.886</strong>（28 步中第 2 步），线性再次<strong>击败</strong> MLP（0.886 vs 0.859）与 24 块拼接（0.795）；最终潜变量近乎无用（0.616）。在完全不同的骨干上，同样的早 / 持续 / 线性故事。</div>
+</section>
+
+<!-- 26. migration table -->
+<section>
+ <h2>跨模型变的东西：失败从解剖迁移到语义</h2>
+ <div class="cols">
+ <div>
+ <table>
+ <tr><th>类别</th><th>SD1.5 (UNet)</th><th>SD3.5 (DiT)</th></tr>
+ <tr><td>肢 limb</td><td>79.9%</td><td>0.1%</td></tr>
+ <tr><td>手 hand</td><td>69.5%</td><td>0.6%</td></tr>
+ <tr><td>文字 text</td><td>60.7%</td><td>4.9%</td></tr>
+ <tr><td>脸 face</td><td>27.0%</td><td>0.7%</td></tr>
+ <tr><td>计数 count</td><td>21.4%</td><td>12.5%</td></tr>
+ <tr><td>物理 physics</td><td>11.1%</td><td>0.4%</td></tr>
+ <tr><td><strong>整体</strong></td><td><strong>44.9%</strong></td><td><strong>3.1%</strong></td></tr>
+ </table>
+ </div>
+ <div>
+ <div class="box result"><span class="tag">结果</span>更强的 DiT 几乎<strong>消灭了解剖错误</strong>（≤1%）。整体缺陷率暴跌 <strong>44.9% → 3.1%</strong>。剩下的是<strong>语义</strong>：计数和文字。</div>
+ <div class="box warnbox"><span class="tag">提醒</span>两模型在架构<em>和</em>能力上都不同——作为<em>描述性</em>迁移报告，不是因果论断。</div>
+ </div>
+ </div>
+</section>
+
+<!-- 26b. migration twist -->
+<section>
+ <h2>漂亮的反转：计数翻转</h2>
+ <div class="box intuition"><span class="tag">反转</span><strong>计数</strong>——弱 UNet 里最难、<em>下降</em>的例外（峰值 0.858，衰减到 0.72）——在强 DiT 里成了<em>最主要</em>的失败，也是<em>最可解码</em>的类别（AUC <strong>0.986</strong>）。</div>
+ <div class="box result"><span class="tag">这说明什么</span>能力买来的是<strong>解剖正确</strong>，<em>不是</em><strong>语义忠实</strong>。强模型仍会犯的错是语义的（有几个、文字写什么）——而这些恰恰在它的激活里格外清晰可读。</div>
+ <div class="box statview"><span class="tag">为何是干净的故事</span>计数是<em>两个</em>模型里都样本充足的唯一缺陷，所以这次翻转是一个真实、可讲的跨模型差异——不是小样本的假象。</div>
+</section>
+
+<!-- 26c. deployment setup -->
+<section>
+ <h2>把应用诚实地摆出来——一个全新留出测试</h2>
+ <div class="box intuition"><span class="tag">真实部署，不是训练数字</span>早停止在一个探针从未见过的<strong>全新留出集 503 张图</strong>上评估。在这个集上探针的<strong>部署 AUC 是 0.761</strong>——<em>低于</em>分布内的 0.846，且摆在前面报告。</div>
+ <div class="box statview"><span class="tag">循环，一句话</span>去噪到第 k*=1 步 → 打分 → 若分数 &gt; 阈值 τ=0.1，扔掉这次生成、换新种子重启；否则跑完。因为探针在<strong>第 1 步</strong>就触发，一次中止只浪费 50 次模型调用里的<strong>一次</strong>。</div>
+ <div class="box keyidea"><span class="tag">"好"长什么样</span>我们想让被接受图像的缺陷率下降，而<em>不</em>让每张接受图像的平均模型调用数涨太多。下一页读这个权衡。</div>
+</section>
+
+<!-- 27. early-abort results fig4 -->
+<section>
+ <h2>那一个应用：早停止省约 47% 算力</h2>
+ <div class="cols">
+ <div>
+ <table>
+ <tr><th>方法</th><th>缺陷率 ↓</th><th>调用/接受 ↓</th></tr>
+ <tr><td>不过滤</td><td>48.5%</td><td>50.0</td></tr>
+ <tr><td>全拒绝采样</td><td>0%</td><td>97.1</td></tr>
+ <tr><td>随机中止 (τ=0.1)</td><td>48.6%</td><td>51.8</td></tr>
+ <tr><td><strong>IDP 早停止 (τ=0.1)</strong></td><td><strong class="win">20.0%</strong></td><td><strong>51.8</strong></td></tr>
+ <tr><td><em>oracle</em></td><td>0%</td><td>50.9</td></tr>
+ </table>
+ <div class="box result"><span class="tag">结果</span>把被接受图像的缺陷率从 <strong>48.5% → 20%</strong>，代价 <strong>51.8</strong> 次调用 vs 全拒绝采样的 <strong>97.1</strong>——<strong>省 46.7%</strong>。同预算下随机中止毫无用处（48.6%）：省来自<em>探针</em>，不是"早停"本身。</div>
+ </div>
+ <div>
+ <figure>
+ <img src="figures/fig4_pareto.png" alt="早停止 Pareto" style="max-height:44vh">
+ <figcaption>留出集 Pareto：左下更好（更少调用、更少缺陷）。IDP（蓝色扫描）压制随机中止（紫 ×），且远比全拒绝采样（绿 ▲，约 97 次调用）便宜。真实但<em>有界</em>——受留出 AUC 0.761 限制。</figcaption>
+ </figure>
+ </div>
+ </div>
+</section>
+
+<!-- ============ PART 5 DIVIDER ============ -->
+<section data-background-color="#12233f">
+ <div class="divider"><div class="kicker">第 5 部分</div><h2>更深的检验——难题我们也查了</h2></div>
+</section>
+
+<!-- 28. per-block ranking appendix -->
+<section>
+ <h2>附录——信号是广布的，不是碰巧一个块</h2>
+ <div class="cols">
+ <div>
+ <p>全部 22 块按最优步 AUC 排序。跨度是一条<strong>窄带，0.772–0.846</strong>——缺陷信号<strong>广布于整个网络</strong>，横跨编码器与解码器。只有最细的编码器块（D0R0）明显最弱。</p>
+ <div class="box statview"><span class="tag">统计学家视角</span>故事<em>不是</em>"某个神奇的层胜出"，而是"信号无处不在，有趣的结构只在你<strong>按失败类型</strong>拆分时才出现"（支柱 2）。一种抗挑数据的诚实叙述。</div>
+ </div>
+ <div>
+ <table style="font-size:.58em">
+ <tr><th>块</th><th>峰值 AUC</th><th>步</th></tr>
+ <tr><td>D0R1</td><td>0.846</td><td>1</td></tr>
+ <tr><td>D1R0</td><td>0.841</td><td>2</td></tr>
+ <tr><td>U2R1</td><td>0.839</td><td>6</td></tr>
+ <tr><td>D1R1</td><td>0.836</td><td>6</td></tr>
+ <tr><td>U2R2</td><td>0.834</td><td>5</td></tr>
+ <tr><td>…</td><td>…</td><td>…</td></tr>
+ <tr><td>D3R0</td><td>0.793</td><td>23</td></tr>
+ <tr><td>D0R0</td><td>0.772</td><td>31</td></tr>
+ </table>
+ <div class="footnote">附录表：全部 22 个残差块，池化缺陷标签。</div>
+ </div>
+ </div>
+</section>
+
+<!-- 29. SD3.5 details appendix -->
+<section>
+ <h2>附录——DiT 地图 + 迁移的视觉核查</h2>
+ <div class="cols">
+ <div>
+ <figure>
+ <img src="figures/figA_sd35_auc.png" alt="SD3.5 AUC 地图与曲线" style="max-height:40vh">
+ <figcaption>SD3.5 对应图：24 个 transformer 块 × 28 步。与 UNet 同样的早 / 持续 / 广布形状——从第 1 步起平坦在 0.86–0.89。</figcaption>
+ </figure>
+ </div>
+ <div>
+ <div class="box result"><span class="tag">在要紧处样本充足</span>在 SD3.5 上只有<strong>计数</strong>（n=90，AUC <strong>0.986</strong>）和<strong>文字</strong>（n=35，AUC <strong>0.981</strong>）有足够正例——且都极其可解码。解剖类正例 ≤5（模型根本不犯那些错）。</div>
+ <div class="box intuition"><span class="tag">视觉核查（附录图）</span>全部 100 张盲标 SD3.5 图，边框按人类判定上色：红（缺陷，61）聚在<strong>计数 &amp; 文字</strong>；绿（干净，39）填满解剖类。解剖→语义的迁移一眼可见——是一张图，不只是一个数。</div>
+ </div>
+ </div>
+ <div class="footnote">SD3.5 裁判自一致 κ=0.73（高于 SD1.5 的 0.53）。figB_sd35_qual.png 是 100 张缩略图拼版；此处描述而非嵌入。</div>
+</section>
+
+<!-- 30. qualitative fig5 -->
+<section>
+ <h2>附录——探针到底看到什么</h2>
+ <figure>
+ <img src="figures/fig5_qualitative.png" alt="定性 第一步 vs 最终">
+ <figcaption>代表性生成。<strong>上：</strong>第 1 步状态——对我们是纯噪声。<strong>下：</strong>最终图像 + 判定（TP = 正确中止的缺陷；TN = 正确保留的干净；FP = 白白中止的干净）。线性探针把这些从噪声上排里分开。</figcaption>
+ </figure>
+ <div class="box statview"><span class="tag">令人安心的错误画像</span>主要错误是<strong>保守型</strong>——错误中止一次干净生成（假阳），<em>而非</em>放过一个缺陷生成。对一个过滤器而言，偏向谨慎才是良性的失败模式。</div>
+</section>
+
+<!-- ============ PART 6 DIVIDER ============ -->
+<section data-background-color="#12233f">
+ <div class="divider"><div class="kicker">第 6 部分</div><h2>为何深刻 · 局限 · 要点</h2></div>
+</section>
+
+<!-- 31. why deep -->
+<section>
+ <h2>为何这项工作深刻</h2>
+ <div class="box deep"><span class="tag">为何深刻</span>
+ <ul>
+ <li><strong>一个关于表示的论断，不是一个小工具。</strong>线性胜过非线性说明失败信号<em>本就线性编码</em>——这是关于模型内部几何的陈述，正是可解释性追求的。</li>
+ <li><strong>是结构，不是单一分数。</strong>按深度分辨、类型专属的地图（文字→瓶颈、手→解码器）是每种失败住在何处的<em>机制账本</em>——超出任何整体质量预测器。</li>
+ <li><strong>一个解释规则的例外。</strong>计数那条独特的<em>下降</em>曲线，加上它在更强模型上翻转为主导，把现象绑到一个干净的想法：局部 vs 全局、早敲定 vs 晚敲定。</li>
+ <li><strong>架构无关。</strong>在两种主流设计（UNet &amp; DiT）上都成立。</li>
+ </ul></div>
+</section>
+
+<!-- 32. limitations -->
+<section>
+ <h2>诚实的局限（写在正文里）</h2>
+ <div class="box warnbox"><span class="tag">提醒</span>
+ <ul>
+ <li><strong>标签效度。</strong>裁判与盲标人类只有弱一致（κ=0.11）。目标是一个 <em>VLM 判定的</em>缺陷，与人类判断吻合并不完美——<strong>直说，不藏</strong>。</li>
+ <li><strong>能力 vs 架构混杂。</strong>两模型在两条轴上都不同；解剖→语义迁移是描述性的，非因果。</li>
+ <li><strong>样本量与范围。</strong>计数、物理样本不足（CI 宽）；SD3.5 上只有两类过线。</li>
+ <li><strong>持平，非碾压。</strong>去噪中途的探针<em>持平</em>事后 CLIP（0.846 vs 0.827）而非胜过它；部署 AUC（0.761）低于分布内（0.846）。</li>
+ </ul></div>
+ <div class="box statview"><span class="tag">统计学家视角</span>这些都不动摇核心的、无撞车的发现——它们只是<strong>界定其强度</strong>，而且写在正文里、没藏进附录。这是科学成熟度。</div>
+</section>
+
+<!-- 33. takeaways -->
+<section>
+ <h2>要点</h2>
+ <div class="box intuition"><span class="tag">记住三件事</span>
+ <ol>
+ <li>扩散模型<strong>最终的结构性失败，从它的第一去噪步起就线性可读</strong>——在内部特征上的一个简单逻辑回归，AUC 0.846。</li>
+ <li><strong>不同失败住在不同深度</strong>，而且<strong>计数是一个语义例外</strong>（最难、下降）——是一张机制地图，不是一个单分数。</li>
+ <li>它<strong>在第二种架构上复现</strong>，并兑现为一个几乎免费的早停止，省约 47% 算力。</li>
+ </ol></div>
+ <div class="box keyidea"><span class="tag">一句话"所以呢"</span>
+ 这是一张<strong>可预测性地图</strong>，画出图像模型如何、在何处敲定它们自己的错误——一个统计学家可以完全当作 AUC 对 (时间 × 深度) 来读的可解释性结果，并对其有噪声的标签坦诚得不同寻常。</div>
+</section>
+
+<!-- 34. closing -->
+<section class="title-slide" data-background-color="#12233f">
+ <div class="divider" style="text-align:center;align-items:center">
+ <div class="kicker">谢谢</div>
+ <h2 style="font-size:1.5em">失败是可读的——早、线性、在特定深度。</h2>
+ <p style="max-width:24em;text-align:center">扩散模型何时知道自己会失败？从第 1 步起。</p>
+ <p style="opacity:.7;font-size:.7em">Anonymous · 投稿 </p>
+ </div>
+</section>
+
+</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/notes/notes.min.js"></script>
+<script>
+window.MathJax = { tex:{inlineMath:[['\\(','\\)']], displayMath:[['\\[','\\]']]}, svg:{fontCache:'global'} };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+Reveal.initialize({
+ hash:true, slideNumber:'c/t', width:1280, height:800, margin:0.045,
+ transition:'slide', controls:true, progress:true, center:true,
+ plugins:[ RevealNotes ]
+});
+</script>
+</body>
+</html>

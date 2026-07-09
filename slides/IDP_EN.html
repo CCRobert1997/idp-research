@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>When Does a Diffusion Model Know It Will Fail?</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/theme/white.min.css" id="theme">
+<style>
+:root{
+ --ink:#1a2233; --muted:#5b6678; --accent:#1f6feb; --accent2:#0e8a6e;
+ --warn:#b3541e; --bg:#ffffff; --soft:#f4f7fb; --line:#dbe3ee;
+}
+.reveal{font-family:-apple-system,"Segoe UI",Inter,"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif;
+ font-size:30px; color:var(--ink);}
+.reveal h1,.reveal h2,.reveal h3,.reveal h4{color:var(--ink); font-weight:750; letter-spacing:-.01em; text-transform:none; margin-bottom:.35em; line-height:1.15;}
+.reveal h1{font-size:1.9em;} .reveal h2{font-size:1.35em;} .reveal h3{font-size:1.08em; color:var(--accent);}
+.reveal section{text-align:left;}
+.reveal .slides section .fragment.highlight-current-blue.current-fragment{color:var(--accent);}
+.reveal p,.reveal li{line-height:1.4;}
+.reveal ul,.reveal ol{margin-left:1em; width:100%;}
+.reveal li{margin:.28em 0;}
+.reveal strong{color:var(--accent); font-weight:700;}
+.reveal em{color:var(--warn); font-style:normal; font-weight:600;}
+.reveal a{color:var(--accent);}
+.reveal small,.reveal .cite{color:var(--muted); font-size:.62em;}
+
+/* ---- title slide ---- */
+.title-slide{display:flex; flex-direction:column; justify-content:center; height:100%;}
+.title-slide .kicker{color:var(--accent); font-weight:700; letter-spacing:.06em; text-transform:uppercase; font-size:.62em;}
+.title-slide h1{font-size:1.7em; margin:.25em 0;}
+.title-slide .tagline{color:var(--muted); font-size:.82em; max-width:22em;}
+.title-slide .byline{margin-top:1.2em; color:var(--ink); font-size:.7em;}
+.title-slide .venue{color:var(--muted); font-size:.6em;}
+
+/* ---- section divider ---- */
+.divider{background:linear-gradient(135deg,#12233f,#1f6feb); height:100%; display:flex; flex-direction:column; justify-content:center; margin:-40px; padding:40px 80px; border-radius:0;}
+.divider h2, .divider h1, .divider p, .divider .kicker{color:#fff !important;}
+.divider .kicker{opacity:.8; letter-spacing:.08em; text-transform:uppercase; font-size:.6em; font-weight:700;}
+.divider h2{font-size:1.8em; border:none;}
+
+/* ---- callout boxes ---- */
+.box{border-radius:14px; padding:.7em 1em; margin:.5em 0; border:1px solid var(--line); background:var(--soft); font-size:.9em;}
+.box .tag{display:inline-block; font-size:.6em; font-weight:800; letter-spacing:.06em; text-transform:uppercase; padding:.15em .6em; border-radius:20px; margin-bottom:.35em;}
+.intuition{background:#eef5ff; border-color:#cfe0fb;} .intuition .tag{background:var(--accent); color:#fff;}
+.statview{background:#eafaf4; border-color:#c7ecdd;} .statview .tag{background:var(--accent2); color:#fff;}
+.keyidea{background:#fff7ec; border-color:#f3dcbb;} .keyidea .tag{background:var(--warn); color:#fff;}
+.result{background:#f3f0ff; border-color:#ddd4f7;} .result .tag{background:#6b46c1; color:#fff;}
+.deep{background:#fdeef2; border-color:#f6cdd9;} .deep .tag{background:#b3245b; color:#fff;}
+.warnbox{background:#fff4f0; border-color:#f6cdbb;} .warnbox .tag{background:var(--warn); color:#fff;}
+
+/* ---- layout helpers ---- */
+.cols{display:flex; gap:1.1em; align-items:flex-start;}
+.cols > *{flex:1; min-width:0;}
+.center{text-align:center;}
+.big{font-size:1.5em; font-weight:750; color:var(--accent); line-height:1.2;}
+.lead{font-size:1.05em; color:var(--ink);}
+figure{margin:.3em auto; text-align:center;}
+figure img{max-height:46vh; width:auto; border-radius:10px; border:1px solid var(--line); background:#fff;}
+figcaption{color:var(--muted); font-size:.6em; margin-top:.35em;}
+.reveal table{font-size:.68em; margin:.3em auto; border-collapse:collapse; width:100%;}
+.reveal table th{background:#12233f; color:#fff; padding:.35em .5em; font-weight:700;}
+.reveal table td{padding:.3em .5em; border-bottom:1px solid var(--line);}
+.reveal table tr:nth-child(even) td{background:var(--soft);}
+.win{color:var(--accent2); font-weight:700;}
+.reveal .slide-number{background:transparent; color:var(--muted); font-size:14px;}
+.pill{display:inline-block; background:var(--soft); border:1px solid var(--line); border-radius:20px; padding:.1em .7em; font-size:.72em; margin:.15em;}
+.footnote{margin-top:.6em; display:block; clear:both; color:var(--muted); font-size:.5em;}
+kbd{background:#12233f;color:#fff;border-radius:5px;padding:.05em .4em;font-size:.8em;}
+.steps{display:flex;gap:.4em;align-items:center;justify-content:center;flex-wrap:wrap;font-size:.8em;margin:.4em 0;}
+.steps .s{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:.3em .5em;text-align:center;}
+.arrow{color:var(--accent);font-weight:800;}
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<!-- 1. TITLE -->
+<section class="title-slide" data-background-color="#ffffff">
+ <div class="kicker">Diffusion Models · Interpretability · Predictability</div>
+ <h1>When Does a Diffusion Model Know It Will Fail?</h1>
+ <p class="tagline">An image-generating AI leaves a fingerprint of its own future mistakes in its internal signals — long before the picture exists. We build a map of <em>when</em> and <em>where</em> that fingerprint appears.</p>
+ <div class="byline"><strong>Anonymous</strong><br><span class="venue"></span></div>
+</section>
+
+<!-- 2. 30-SECOND VERSION -->
+<section>
+ <h2>The 30-second version</h2>
+ <div class="box intuition"><span class="tag">In one breath</span>
+ Modern AIs that draw pictures often fail in specific ways — six fingers, a garbled sign, the wrong number of apples. We ask: <strong>at what moment, and in which internal part of the model, is that failure already predictable?</strong> Answer: from the <strong>very first</strong> drawing step, using a <strong>simple linear classifier</strong> on the model's own internal numbers — and <em>different</em> kinds of failure are readable from <em>different</em> internal layers.</div>
+ <div class="box statview"><span class="tag">Statistician's view</span>
+ This is a <strong>supervised signal-detection study</strong>. We attach a binary label (defective vs. clean) to each run, train a <strong>logistic regression</strong> on internal feature vectors, and score it with <strong>AUC-ROC</strong>. The whole paper is a map of AUC across two axes: <em>time</em> (drawing step) and <em>depth</em> (which layer).</div>
+</section>
+
+<!-- 3. ROADMAP -->
+<section>
+ <h2>Roadmap</h2>
+ <div class="cols">
+ <div>
+ <div class="box"><strong>Part 1 · Background from zero</strong><br><small>What is an image-generating AI? What is "diffusion"? What are steps, layers, activations, probing, and AUC — all from scratch.</small></div>
+ <div class="box"><strong>Part 2 · The question, made concrete</strong><br><small>The exact predictability question + the one key idea.</small></div>
+ <div class="box"><strong>Part 3 · Method</strong><br><small>Generate a corpus → label defects → fit linear probes → read the AUC map three ways.</small></div>
+ </div>
+ <div>
+ <div class="box"><strong>Part 4 · Main results</strong><br><small>Early / persistent / linear · class-specific depth · the counting exception · works on a second architecture.</small></div>
+ <div class="box"><strong>Part 5 · Deeper checks</strong><br><small>Ablations, robustness, a second model, honest human-agreement limits.</small></div>
+ <div class="box"><strong>Part 6 · Why it's deep + limits + takeaways</strong></div>
+ </div>
+ </div>
+</section>
+
+<!-- ============ PART 1 DIVIDER ============ -->
+<section data-background-color="#12233f">
+ <div class="divider"><div class="kicker">Part 1</div><h2>Background: from zero</h2><p>No machine-learning assumed. Every term explained the first time.</p></div>
+</section>
+
+<!-- 4. what is a text-to-image AI -->
+<section>
+ <h2>What is an "image-generating AI"?</h2>
+ <p>You type a sentence — <em>"a chef holding a knife"</em>and a program returns a photograph-like image that did not exist before.</p>
+ <div class="box intuition"><span class="tag">Intuition</span>
+ Think of it as an enormous <strong>function</strong> \( G \) with millions of tuned constants (called <strong>weights</strong>). It maps <strong>text + a random seed</strong> to <strong>an image</strong>:
+ \[ \text{image} = G(\text{text},\ \text{random seed}) \]
+ Change the seed, get a different picture from the same words. The weights were fit once, on billions of image–caption pairs, so that \(G\) produces plausible pictures.</div>
+ <div class="box statview"><span class="tag">Statistician's view</span>
+ \(G\) is a giant nonlinear regression fit by minimizing a loss over data. The "seed" is a draw from a Gaussian — the model is a learned sampler from a conditional distribution \(p(\text{image}\mid\text{text})\).</div>
+</section>
+
+<!-- 5. what is diffusion -->
+<section>
+ <h2>How does it draw? "Diffusion" = denoising, step by step</h2>
+ <p>The model does <em>not</em> paint the picture in one shot. It starts from <strong>pure random static</strong> and cleans it up gradually over 50 steps (drawn on the next slide).</p>
+ <div class="box intuition"><span class="tag">Intuition</span>
+ Like a sculptor starting from a block of noise and, in <strong>50 small strokes</strong>, revealing the statue hidden inside. Each stroke removes a little randomness. This paper studies <strong>Stable Diffusion 1.5</strong>, which uses <strong>\(T=50\) steps</strong>.</div>
+ <div class="box statview"><span class="tag">Statistician's view</span>
+ Each step is one move of a <strong>discretized reverse stochastic process</strong>: it nudges the current array toward higher likelihood under \(p(\text{image}\mid\text{text})\). Formally an iterative MAP-like denoiser.</div>
+</section>
+
+<!-- DIAGRAM 1 · denoising chain -->
+<section>
+ <h2>The denoising chain, drawn</h2>
+ <figure>
+ <svg viewBox="0 0 960 278" style="width:100%;height:auto;max-height:44vh" role="img" aria-label="denoising chain">
+  <defs>
+   <marker id="dc1" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5b6678"/></marker>
+   <pattern id="noise1" width="10" height="10" patternUnits="userSpaceOnUse">
+    <rect width="10" height="10" fill="#eef1f6"/>
+    <circle cx="2" cy="2" r="1.3" fill="#8b98ad"/><circle cx="7" cy="6" r="1.3" fill="#a7b3c6"/><circle cx="4" cy="9" r="1.1" fill="#7c89a0"/>
+   </pattern>
+  </defs>
+  <line x1="30" y1="22" x2="932" y2="22" stroke="#5b6678" stroke-width="2" marker-end="url(#dc1)"/>
+  <text x="480" y="14" text-anchor="middle" font-size="16" fill="#5b6678">denoising — a little noise removed at each step</text>
+  <g transform="translate(30,42)"><rect width="150" height="170" rx="10" fill="#fff" stroke="#dbe3ee"/><rect width="150" height="170" rx="10" fill="url(#noise1)" opacity="1"/><circle cx="75" cy="58" r="22" fill="#1f6feb" opacity="0"/><rect x="42" y="82" width="66" height="72" rx="22" fill="#1f6feb" opacity="0"/></g>
+  <g transform="translate(215,42)"><rect width="150" height="170" rx="10" fill="#fff" stroke="#dbe3ee"/><rect width="150" height="170" rx="10" fill="url(#noise1)" opacity=".7"/><circle cx="75" cy="58" r="22" fill="#1f6feb" opacity=".3"/><rect x="42" y="82" width="66" height="72" rx="22" fill="#1f6feb" opacity=".3"/></g>
+  <g transform="translate(400,42)"><rect width="150" height="170" rx="10" fill="#fff" stroke="#dbe3ee"/><rect width="150" height="170" rx="10" fill="url(#noise1)" opacity=".45"/><circle cx="75" cy="58" r="22" fill="#1f6feb" opacity=".6"/><rect x="42" y="82" width="66" height="72" rx="22" fill="#1f6feb" opacity=".6"/></g>
+  <g transform="translate(585,42)"><rect width="150" height="170" rx="10" fill="#fff" stroke="#dbe3ee"/><rect width="150" height="170" rx="10" fill="url(#noise1)" opacity=".2"/><circle cx="75" cy="58" r="22" fill="#1f6feb" opacity=".85"/><rect x="42" y="82" width="66" height="72" rx="22" fill="#1f6feb" opacity=".85"/></g>
+  <g transform="translate(770,42)"><rect width="150" height="170" rx="10" fill="#fff" stroke="#0e8a6e"/><circle cx="75" cy="58" r="22" fill="#1f6feb"/><rect x="42" y="82" width="66" height="72" rx="22" fill="#1f6feb"/></g>
+  <line x1="182" y1="127" x2="213" y2="127" stroke="#5b6678" stroke-width="2" marker-end="url(#dc1)"/>
+  <line x1="367" y1="127" x2="398" y2="127" stroke="#5b6678" stroke-width="2" marker-end="url(#dc1)"/>
+  <line x1="552" y1="127" x2="583" y2="127" stroke="#5b6678" stroke-width="2" marker-end="url(#dc1)"/>
+  <line x1="737" y1="127" x2="768" y2="127" stroke="#5b6678" stroke-width="2" marker-end="url(#dc1)"/>
+  <text x="105" y="237" text-anchor="middle" font-size="16" fill="#12233f" font-weight="700">step 1</text><text x="105" y="256" text-anchor="middle" font-size="13" fill="#b3541e">pure noise</text>
+  <text x="290" y="237" text-anchor="middle" font-size="16" fill="#12233f">step ~12</text>
+  <text x="475" y="237" text-anchor="middle" font-size="16" fill="#12233f">step ~25</text>
+  <text x="660" y="237" text-anchor="middle" font-size="16" fill="#12233f">step ~40</text>
+  <text x="845" y="237" text-anchor="middle" font-size="16" fill="#12233f" font-weight="700">step 50</text><text x="845" y="256" text-anchor="middle" font-size="13" fill="#0e8a6e">final image</text>
+ </svg>
+ <figcaption>One run = a sequence of 50 states, from pure static (step 1) to the finished picture (step 50). We index step 1 = noisiest, step 50 = cleanest.</figcaption>
+ </figure>
+ <div class="box keyidea"><span class="tag">The hook</span>To a human, step 1 is <em>just noise</em>. The paper asks: is the eventual mistake already written into that noisy state?</div>
+</section>
+
+<!-- 6. the trajectory / step 1 is noise -->
+<section>
+ <h2>The "trajectory": a run is a movie, not a snapshot</h2>
+ <div class="cols">
+ <div>
+ <p>Every run produces a <strong>sequence</strong> of 50 intermediate states, from noise (step 1) to finished (step 50). We call this the <strong>denoising trajectory</strong>.</p>
+ <p>Crucially: <strong>at step 1 the image is unrecognizable static</strong> to a human eye. Nothing is "there" yet.</p>
+ <div class="box keyidea"><span class="tag">The hook</span>
+ The paper's question lives here: <strong>is the model's eventual mistake already encoded at step 1</strong>, when we humans see only noise?</div>
+ </div>
+ <div>
+ <figure>
+ <img src="figures/fig5_qualitative.png" alt="step 1 noise vs final image">
+ <figcaption>Top row: the state at <strong>step 1</strong>visually pure noise. Bottom row: the <strong>final</strong> image of that same run, with the failure label. The claim: a linear rule reads the top row and already predicts the bottom row.</figcaption>
+ </figure>
+ </div>
+ </div>
+</section>
+
+<!-- 7. the UNet, blocks -->
+<section>
+ <h2>What is inside the model? A "UNet" with blocks</h2>
+ <p>Each denoising step calls one big network, the <strong>UNet</strong>. Picture a U-shape: it first <strong>compresses</strong> the image into a coarse summary, then <strong>expands</strong> it back to full resolution.</p>
+ <div class="cols">
+ <div>
+ <div class="box intuition"><span class="tag">Intuition</span>
+ <strong>Down (encoder)</strong> blocks — zoom out, capture the big picture / layout.<br>
+ <strong>Mid (bottleneck)</strong>the most compressed, abstract summary.<br>
+ <strong>Up (decoder)</strong> blocks — zoom back in, add fine detail.<br>
+ SD1.5's UNet has <strong>22 such blocks</strong> (labelled D0R0 … MidR1 … U3R2).</div>
+ </div>
+ <div>
+ <div class="box statview"><span class="tag">Statistician's view</span>
+ Think of the blocks as a <strong>sequence of learned feature transforms</strong> at coarsening then refining resolutions — loosely like a multi-resolution basis (wavelet-ish). "Depth" = which block = how abstract the representation is. This is the second axis of our map.</div>
+ </div>
+ </div>
+ <div class="footnote">Naming: D = Down/encoder, Mid = bottleneck, U = Up/decoder; "R0/R1/R2" index residual blocks within a stage.</div>
+</section>
+
+<!-- DIAGRAM 2 · UNet blocks + read-out points -->
+<section>
+ <h2>Where we read the model: the UNet's blocks</h2>
+ <figure>
+ <svg viewBox="0 0 960 430" style="width:100%;height:auto;max-height:46vh" role="img" aria-label="UNet blocks and read-out points">
+  <defs>
+   <marker id="un_a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5b6678"/></marker>
+  </defs>
+  <!-- read-out bus -->
+  <text x="480" y="24" text-anchor="middle" font-size="16" fill="#b3541e" font-weight="700">READ-OUT · pool activations at every (step k, block ℓ) — free, no extra compute</text>
+  <line x1="150" y1="38" x2="850" y2="38" stroke="#b3541e" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <!-- skip connections -->
+  <line x1="200" y1="86" x2="850" y2="86" stroke="#c9b39a" stroke-width="1.4" stroke-dasharray="4 4"/>
+  <line x1="320" y1="146" x2="740" y2="146" stroke="#c9b39a" stroke-width="1.4" stroke-dasharray="4 4"/>
+  <line x1="440" y1="206" x2="630" y2="206" stroke="#c9b39a" stroke-width="1.4" stroke-dasharray="4 4"/>
+  <text x="480" y="330" text-anchor="middle" font-size="12" fill="#c9986a">dashed tan = skip connections (encoder → decoder)</text>
+  <!-- input -->
+  <rect x="18" y="188" width="96" height="52" rx="10" fill="#f4f7fb" stroke="#5b6678"/><text x="66" y="212" text-anchor="middle" font-size="14" fill="#12233f">noisy</text><text x="66" y="230" text-anchor="middle" font-size="14" fill="#12233f">latent z_k</text>
+  <!-- DOWN blocks (blue) -->
+  <g><rect x="150" y="62" width="104" height="50" rx="10" fill="#eef5ff" stroke="#1f6feb"/><text x="202" y="92" text-anchor="middle" font-size="16" fill="#12233f">Down · D0</text><circle cx="202" cy="62" r="5" fill="#b3541e"/><line x1="202" y1="62" x2="202" y2="38" stroke="#b3541e" stroke-width="1.2" stroke-dasharray="3 3"/></g>
+  <g><rect x="270" y="122" width="104" height="50" rx="10" fill="#eef5ff" stroke="#1f6feb"/><text x="322" y="152" text-anchor="middle" font-size="16" fill="#12233f">Down · D1</text><circle cx="322" cy="122" r="5" fill="#b3541e"/><line x1="322" y1="122" x2="322" y2="38" stroke="#b3541e" stroke-width="1.2" stroke-dasharray="3 3"/></g>
+  <g><rect x="390" y="182" width="104" height="50" rx="10" fill="#eef5ff" stroke="#1f6feb"/><text x="442" y="212" text-anchor="middle" font-size="16" fill="#12233f">Down · D3</text><circle cx="442" cy="182" r="5" fill="#b3541e"/><line x1="442" y1="182" x2="442" y2="38" stroke="#b3541e" stroke-width="1.2" stroke-dasharray="3 3"/></g>
+  <!-- MID (amber) -->
+  <g><rect x="465" y="252" width="110" height="50" rx="10" fill="#fff7ec" stroke="#b3541e"/><text x="520" y="282" text-anchor="middle" font-size="16" fill="#12233f">Mid · bottleneck</text><circle cx="520" cy="252" r="5" fill="#b3541e"/><line x1="520" y1="252" x2="520" y2="38" stroke="#b3541e" stroke-width="1.2" stroke-dasharray="3 3"/></g>
+  <!-- UP blocks (green) -->
+  <g><rect x="590" y="182" width="104" height="50" rx="10" fill="#eafaf4" stroke="#0e8a6e"/><text x="642" y="212" text-anchor="middle" font-size="16" fill="#12233f">Up · U0</text><circle cx="642" cy="182" r="5" fill="#b3541e"/><line x1="642" y1="182" x2="642" y2="38" stroke="#b3541e" stroke-width="1.2" stroke-dasharray="3 3"/></g>
+  <g><rect x="690" y="122" width="104" height="50" rx="10" fill="#eafaf4" stroke="#0e8a6e"/><text x="742" y="152" text-anchor="middle" font-size="16" fill="#12233f">Up · U1</text><circle cx="742" cy="122" r="5" fill="#b3541e"/><line x1="742" y1="122" x2="742" y2="38" stroke="#b3541e" stroke-width="1.2" stroke-dasharray="3 3"/></g>
+  <g><rect x="790" y="62" width="104" height="50" rx="10" fill="#eafaf4" stroke="#0e8a6e"/><text x="842" y="92" text-anchor="middle" font-size="16" fill="#12233f">Up · U2</text><circle cx="842" cy="62" r="5" fill="#b3541e"/><line x1="842" y1="62" x2="842" y2="38" stroke="#b3541e" stroke-width="1.2" stroke-dasharray="3 3"/></g>
+  <!-- forward arrows -->
+  <line x1="114" y1="214" x2="150" y2="100" stroke="#5b6678" stroke-width="2" marker-end="url(#un_a)"/>
+  <line x1="254" y1="92" x2="270" y2="140" stroke="#5b6678" stroke-width="2" marker-end="url(#un_a)"/>
+  <line x1="374" y1="152" x2="390" y2="200" stroke="#5b6678" stroke-width="2" marker-end="url(#un_a)"/>
+  <line x1="494" y1="212" x2="470" y2="256" stroke="#5b6678" stroke-width="2" marker-end="url(#un_a)"/>
+  <line x1="575" y1="272" x2="595" y2="222" stroke="#5b6678" stroke-width="2" marker-end="url(#un_a)"/>
+  <line x1="694" y1="200" x2="710" y2="152" stroke="#5b6678" stroke-width="2" marker-end="url(#un_a)"/>
+  <line x1="794" y1="140" x2="810" y2="92" stroke="#5b6678" stroke-width="2" marker-end="url(#un_a)"/>
+  <text x="480" y="392" text-anchor="middle" font-size="14" fill="#5b6678">Down = encoder (compress) · Mid = bottleneck · Up = decoder (expand). SD1.5 has 22 residual blocks in total.</text>
+ </svg>
+ <figcaption>Every denoising step runs one U-shaped network. At each block we tap its output (orange dots) and pool it into a small vector — this is what the probe reads.</figcaption>
+ </figure>
+</section>
+
+<!-- 8. activations -->
+<section>
+ <h2>What are "activations"?</h2>
+ <p>When the model processes a step, each block produces a big array of numbers — its intermediate output. These are the <strong>activations</strong>: the model's internal "scratch work".</p>
+ <div class="box intuition"><span class="tag">Intuition</span>
+ A block's activation is a 3-D array (height × width × channels). We squash it to one manageable vector by <strong>averaging over all spatial positions</strong><strong>global average pooling</strong>:
+ \[ \bar{\mathbf f}_k^{\ell} \;=\; \frac{1}{h_\ell w_\ell}\sum_{i,j}\mathbf f_k^{\ell}[i,j] \;\in\; \mathbb{R}^{d_\ell} \]
+ In words: for block \(\ell\) at step \(k\), take its feature map and average it down to one length-\(d_\ell\) summary vector — the "internal fingerprint" of that (step, block).</div>
+ <div class="box statview"><span class="tag">Statistician's view</span>
+ Pooling = taking the <strong>spatial mean</strong> of each channel: a cheap sufficient-statistic-style reduction to a fixed-length feature vector, so every (step, block) gives one covariate vector we can regress on. <strong>Free:</strong> the tensor is already computed; we just read it off.</div>
+</section>
+
+<!-- 9. probing = classifier -->
+<section>
+ <h2>What is a "probe"? A classifier on internal features</h2>
+ <div class="box statview"><span class="tag">Statistician's view — this is the whole method</span>
+ A <strong>probe</strong> is nothing exotic: it is a <strong>logistic regression</strong>. For a chosen (step \(k\), block \(\ell\)) we take the pooled feature vector \(\bar{\mathbf f}_k^{\ell}\) as predictors \(x\) and the defect label \(y\in\{0,1\}\) as response, and fit
+ \[ \Pr(y=1\mid x)=\sigma(\boldsymbol\beta^\top x + \beta_0),\qquad \sigma(u)=\tfrac{1}{1+e^{-u}} \]
+ Just \(d_\ell+1\) coefficients. Trains in under a second.</div>
+ <div class="box intuition"><span class="tag">Why "probe" and why linear</span>
+ We are not building a better generator. We are <strong>interrogating the representation</strong>: if a <em>linear</em> rule can read the future failure off the internal vector, then that information is <strong>already laid out linearly inside the model</strong>not something a fancy classifier had to work to extract. Linearity is the scientific claim, not a convenience.</div>
+</section>
+
+<!-- DIAGRAM 3 · probing pipeline -->
+<section>
+ <h2>Probing, as a pipeline</h2>
+ <figure>
+ <svg viewBox="0 0 960 300" style="width:100%;height:auto;max-height:44vh" role="img" aria-label="probing pipeline">
+  <defs>
+   <marker id="pp_a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5b6678"/></marker>
+  </defs>
+  <text x="405" y="34" text-anchor="middle" font-size="15" fill="#5b6678">binary target · will the final image be defective?  y ∈ {0,1}</text>
+  <!-- features -->
+  <rect x="24" y="96" width="196" height="96" rx="10" fill="#eef5ff" stroke="#1f6feb"/>
+  <text x="122" y="132" text-anchor="middle" font-size="17" fill="#12233f" font-weight="700">activations</text>
+  <text x="122" y="156" text-anchor="middle" font-size="15" fill="#12233f">pooled vector</text>
+  <text x="122" y="178" text-anchor="middle" font-size="16" fill="#1f6feb">f̄ (at step k, block ℓ)</text>
+  <!-- classifier -->
+  <rect x="300" y="86" width="210" height="116" rx="10" fill="#eafaf4" stroke="#0e8a6e"/>
+  <text x="405" y="126" text-anchor="middle" font-size="17" fill="#12233f" font-weight="700">logistic regression</text>
+  <text x="405" y="152" text-anchor="middle" font-size="16" fill="#0e8a6e">σ(βᵀx + β₀)</text>
+  <text x="405" y="178" text-anchor="middle" font-size="13" fill="#5b6678">d+1 weights · trains in &lt;1s</text>
+  <!-- score -->
+  <rect x="590" y="96" width="150" height="96" rx="10" fill="#f4f7fb" stroke="#5b6678"/>
+  <text x="665" y="134" text-anchor="middle" font-size="16" fill="#12233f">score</text>
+  <text x="665" y="162" text-anchor="middle" font-size="15" fill="#12233f">P(defect) ∈ [0,1]</text>
+  <!-- AUC box with mini ROC -->
+  <rect x="812" y="80" width="126" height="132" rx="10" fill="#f3f0ff" stroke="#6b46c1"/>
+  <text x="875" y="104" text-anchor="middle" font-size="16" fill="#6b46c1" font-weight="700">AUC-ROC</text>
+  <line x1="836" y1="196" x2="836" y2="120" stroke="#8a7bb8" stroke-width="1.2"/>
+  <line x1="836" y1="196" x2="918" y2="196" stroke="#8a7bb8" stroke-width="1.2"/>
+  <path d="M836,196 Q846,130 918,120" fill="none" stroke="#6b46c1" stroke-width="2.5"/>
+  <line x1="836" y1="196" x2="918" y2="120" stroke="#b9adda" stroke-width="1" stroke-dasharray="3 3"/>
+  <!-- arrows -->
+  <line x1="220" y1="144" x2="298" y2="144" stroke="#5b6678" stroke-width="2.4" marker-end="url(#pp_a)"/>
+  <line x1="510" y1="144" x2="588" y2="144" stroke="#5b6678" stroke-width="2.4" marker-end="url(#pp_a)"/>
+  <line x1="740" y1="144" x2="810" y2="144" stroke="#5b6678" stroke-width="2.4" marker-end="url(#pp_a)"/>
+  <text x="405" y="238" text-anchor="middle" font-size="14" fill="#5b6678">Repeat for every (step k, block ℓ) → one AUC per cell → the AUC map.</text>
+ </svg>
+ <figcaption>A probe = train a simple linear classifier on the pooled activations to predict the defect label; score it by AUC. If a <em>linear</em> rule succeeds, the information is already linearly laid out in the model.</figcaption>
+ </figure>
+</section>
+
+<!-- 10. AUC / ROC -->
+<section>
+ <h2>How do we score a probe? AUC-ROC</h2>
+ <div class="cols">
+ <div>
+ <p>The probe outputs a <strong>score</strong> in \([0,1]\): "how likely is this run to end defective?" We rank all held-out runs by that score and ask how well the ranking separates true-defective from true-clean.</p>
+ <div class="box statview"><span class="tag">Statistician's view</span>
+ <strong>AUC = area under the ROC curve</strong> = \(\Pr(\text{score of a random defective} > \text{score of a random clean})\).
+ <ul>
+ <li><strong>0.5</strong> = coin flip, no signal.</li>
+ <li><strong>1.0</strong> = perfect separation.</li>
+ <li>Threshold-free, robust to class imbalance — ideal when defect rates vary by category.</li>
+ </ul></div>
+ </div>
+ <div>
+ <div class="box keyidea"><span class="tag">Read the numbers this way</span>
+ Every headline number in this talk is an AUC. <br><br>
+ <strong>0.846</strong> = "given one defective and one clean run, the probe ranks the defective one higher 85% of the time." <br><br>
+ We plot AUC vs. step and vs. block — that surface <em>is</em> the paper.</div>
+ <div class="box"><span class="tag" style="background:var(--muted);color:#fff">Significance</span><small>Bootstrap confidence intervals on the test set; "significant" = the CI for AUC excludes 0.5.</small></div>
+ </div>
+ </div>
+</section>
+
+<!-- 11. the failure modes -->
+<section>
+ <h2>What kind of failures? Six "structural defects"</h2>
+ <p>Not blur or bad taste — <strong>structural</strong> errors any layperson would flag as "wrong":</p>
+ <div class="cols">
+ <div>
+ <span class="pill"><strong>hand</strong>malformed fingers</span>
+ <span class="pill"><strong>face</strong>extra/asymmetric features</span>
+ <span class="pill"><strong>limb</strong>wrong limb count/topology</span><br>
+ <span class="pill"><strong>count</strong>wrong number of objects</span>
+ <span class="pill"><strong>physics</strong>impossible geometry, fused objects</span>
+ <span class="pill"><strong>text</strong>garbled lettering</span>
+ <div class="box intuition"><span class="tag">Intuition</span>These are evidence the model's internal account of <strong>structure</strong> went wrong, even when the overall scene looks plausible at a glance.</div>
+ </div>
+ <div>
+ <figure>
+ <img src="figures/fig1_teaser.png" alt="six defect categories examples" style="max-height:44vh">
+ <figcaption>One generated example per category. Each category has its own prompt set designed to <em>provoke</em> that failure (e.g. hands, crowds of faces, sprinting athletes, storefront signs).</figcaption>
+ </figure>
+ </div>
+ </div>
+</section>
+
+<!-- 12. what's known vs open -->
+<section>
+ <h2>What was already known — and what wasn't</h2>
+ <div class="box statview"><span class="tag">Known (prior work)</span>
+ Diffusion activations are <strong>linearly informative about what the model gets RIGHT</strong>: linear decoders recover object segments, correspondences, even scene depth — and depth is readable <strong>surprisingly early</strong> in denoising (Beyond Surface Statistics). So probing intermediate states is an established tool.</div>
+ <div class="box warnbox"><span class="tag">Also concurrent (2026)</span>
+ Two very recent works predict an image's <strong>aggregate quality</strong> from early states to save compute (Probe-Select, Diffusion Probe). <em>The authors state plainly: the bare mechanism — probe internals to forecast the final outcome — is not theirs to claim.</em></div>
+ <div class="box keyidea"><span class="tag">The open question this paper attacks</span>
+ Nobody had asked whether <strong>FAILURE</strong> (not correctness, not a single quality score) is legible — and how that legibility varies <strong>by failure type</strong> and <strong>by depth</strong>, traced over the <strong>whole</strong> trajectory. That is the gap.</div>
+</section>
+
+<!-- ============ PART 2 DIVIDER ============ -->
+<section data-background-color="#12233f">
+ <div class="divider"><div class="kicker">Part 2</div><h2>The question, made concrete</h2></div>
+</section>
+
+<!-- 13. the concrete question -->
+<section>
+ <h2>The exact question</h2>
+ <p class="big">At what point in the 50-step drawing process, and in which of the 22 internal blocks, does the model <em>already commit</em> to a structural failure?</p>
+ <div class="box intuition"><span class="tag">Restated for a statistician</span>
+ Build the matrix of AUC values over <strong>(step \(k\) = 1…50) × (block \(\ell\) = 1…22)</strong>. Two questions:
+ <ul>
+ <li><strong>WHEN</strong>read across steps: how early does AUC rise above 0.5? Does it peak mid-way or is it flat?</li>
+ <li><strong>WHERE</strong>read down blocks: which layers carry the signal, and does the answer differ by <em>failure type</em>?</li>
+ </ul></div>
+</section>
+
+<!-- 14. key idea -->
+<section>
+ <h2>The one key idea</h2>
+ <div class="box keyidea"><span class="tag">Key idea</span>
+ <span class="big" style="color:var(--warn)">Failure is a linear, early, depth-organized property of the representation.</span><br><br>
+ The model's internal signals contain a <strong>simple, linearly-readable</strong> imprint of its eventual structural mistake <strong>from the first denoising step</strong>and <strong>each kind of mistake lives at a different depth</strong>. It's a mechanistic <em>map</em> of how failure crystallizes, not a new image generator.</div>
+ <div class="box statview"><span class="tag">Why "linear" is the crux</span>
+ If a <strong>logistic regression beats a neural-net classifier</strong> on the same features (it does: 0.846 vs 0.790), the information isn't hidden — it's <strong>already linearly laid out</strong>. That is a statement about the model's <em>representation geometry</em>, which is exactly what an interpretability paper wants to establish.</div>
+</section>
+
+<!-- ============ PART 3 DIVIDER ============ -->
+<section data-background-color="#12233f">
+ <div class="divider"><div class="kicker">Part 3</div><h2>Method: how the map is built</h2></div>
+</section>
+
+<!-- 15. pipeline -->
+<section>
+ <h2>The pipeline, in four honest steps</h2>
+ <div class="steps" style="font-size:.85em">
+ <div class="s"><strong>1. Generate</strong><br><small>5,036 images<br>6 categories<br>save all 50 steps</small></div><span class="arrow">→</span>
+ <div class="s"><strong>2. Label</strong><br><small>a vision-language<br>judge marks each<br>defective / clean</small></div><span class="arrow">→</span>
+ <div class="s"><strong>3. Probe</strong><br><small>logistic regression<br>at every (step, block)<br>= 50 × 22 fits</small></div><span class="arrow">→</span>
+ <div class="s"><strong>4. Read the map</strong><br><small>AUC vs step,<br>vs block,<br>vs failure type</small></div>
+ </div>
+ <div class="box intuition"><span class="tag">The clever, cheap part</span>
+ Extracting features adds <strong>zero</strong> extra model evaluations — the activations are already computed during normal generation; we just pool and store them. And the probe is a one-second logistic fit. The heavy cost is only the one-time image generation + labeling.</div>
+ <div class="box statview"><span class="tag">Design</span>Stratified <strong>80 / 10 / 10</strong> train/val/test split, fixed seed 42, AUC-ROC as the metric — a clean supervised evaluation protocol.</div>
+</section>
+
+<!-- 16. corpus -->
+<section>
+ <h2>Step 1 — the corpus (real numbers)</h2>
+ <div class="cols">
+ <div>
+ <p><strong>72 prompts × 70 seeds = 5,040</strong> images; 5,036 pass a label-confidence filter. Overall structural-defect rate <strong>44.9%</strong> (nearly class-balanced by design).</p>
+ <div class="box intuition"><span class="tag">Why per-category rates differ so much</span>Prompts were <em>engineered</em> to stress each mode. Sprinting athletes break limbs; storefront signs break text; three-apple scenes break counting. So base rates are informative, not noise.</div>
+ </div>
+ <div>
+ <table>
+ <tr><th>category</th><th>images</th><th>defective</th><th>rate</th></tr>
+ <tr><td>limb</td><td>840</td><td>671</td><td>79.9%</td></tr>
+ <tr><td>hand</td><td>840</td><td>584</td><td>69.5%</td></tr>
+ <tr><td>text</td><td>840</td><td>510</td><td>60.7%</td></tr>
+ <tr><td>face</td><td>840</td><td>227</td><td>27.0%</td></tr>
+ <tr><td>count</td><td>840</td><td>180</td><td>21.4%</td></tr>
+ <tr><td>physics</td><td>840</td><td>93</td><td>11.1%</td></tr>
+ <tr><td><strong>total</strong></td><td><strong>5040</strong></td><td><strong>2265</strong></td><td><strong>44.9%</strong></td></tr>
+ </table>
+ <div class="footnote">Appendix Table: per-prompt-category corpus statistics (VLM judge).</div>
+ </div>
+ </div>
+</section>
+
+<!-- 16b. example prompts per category -->
+<section>
+ <h2>Step 1, concretely — the prompts that <em>provoke</em> each defect</h2>
+ <p>Each of the six categories has <strong>12 hand-written prompts</strong>; every prompt is rendered with <strong>70 different random seeds</strong> (12 × 70 = 840 images per category). A few of the real prompts:</p>
+ <div class="cols" style="font-size:.78em">
+ <div>
+ <div class="box"><span class="tag" style="background:var(--accent);color:#fff">hand</span>"a chef holding a knife" · "two people shaking hands" · "hands typing on a keyboard"</div>
+ <div class="box"><span class="tag" style="background:var(--accent);color:#fff">limb</span>"a dancer mid-leap" · "a gymnast on a balance beam" · "a swimmer diving"</div>
+ <div class="box"><span class="tag" style="background:var(--accent);color:#fff">count</span>"three red apples on a table" · "five wine glasses in a row" · "four cats sitting together"</div>
+ </div>
+ <div>
+ <div class="box"><span class="tag" style="background:var(--accent2);color:#fff">face</span>"a crowd of faces" · "twins standing together" · "a person with detailed eyes"</div>
+ <div class="box"><span class="tag" style="background:var(--accent2);color:#fff">physics</span>"a stack of plates" · "an octopus holding objects" · "a tangle of cables"</div>
+ <div class="box"><span class="tag" style="background:var(--accent2);color:#fff">text</span>"a sign that says OPEN" · "a book cover titled ADVENTURE" · "a street sign reading STOP"</div>
+ </div>
+ </div>
+ <div class="footnote">Prompts are deliberately chosen to stress one failure mode — a many-object scene for counting, a storefront sign for text, a sprinting body for limbs. Full 72-prompt list in the paper's appendix.</div>
+</section>
+
+<!-- 16c. the judge rubric, verbatim -->
+<section>
+ <h2>Step 2, concretely — exactly what the judge is asked</h2>
+ <p>The judge model — <strong>Qwen2.5-VL-7B</strong>, run on-device with greedy decoding — sees one finished image and must answer a fixed rubric in JSON:</p>
+ <div class="box" style="background:#0f1b2d;color:#dce6f5;border-color:#22344f;font-family:ui-monospace,Menlo,monospace;font-size:.72em;line-height:1.6">
+ <div style="color:#7fd1b9">// one JSON verdict per image</div>
+ <strong style="color:#7aa9f4">defective</strong> — any clear structural defect? (malformed anatomy, wrong body-part count, fused objects, impossible geometry, garbled text) — <span style="color:#e8a06a">ignore pure style / blur</span><br>
+ <strong style="color:#7aa9f4">defect_types</strong> — subset of {hand, face, limb, count, physics, text}<br>
+ <strong style="color:#7aa9f4">severity</strong> — 0 none · 1 minor · 2 obvious · 3 catastrophic<br>
+ <strong style="color:#7aa9f4">confidence</strong> — 0–1 &nbsp;·&nbsp; <strong style="color:#7aa9f4">note</strong> — free text
+ </div>
+ <div class="box intuition"><span class="tag">The instruction that matters</span>"<strong>Be conservative</strong> — only mark defective if a non-expert would clearly notice." Keep only labels with <strong>confidence ≥ 0.6</strong> (drops just <strong>4 of 5,040</strong> runs); the <strong>binary</strong> verdict carries the headline claims.</div>
+</section>
+
+<!-- 17. VLM judge + honesty -->
+<section>
+ <h2>Step 2 — labeling, with the honesty up front</h2>
+ <p>A <strong>vision-language judge</strong> (an AI that reads an image and answers questions — here Qwen2.5-VL-7B) marks each finished image defective / clean under a fixed rubric.</p>
+ <div class="box statview"><span class="tag">Statistician's view — the label is noisy, and they say so</span>
+ They audit <strong>inter-rater reliability</strong> like any careful measurement study:
+ <ul>
+ <li>Judge vs. itself (two passes): <strong>77.2% agreement, Cohen's \(\kappa=0.53\)</strong><em>moderate</em>.</li>
+ <li>Judge vs. a <strong>blind human</strong> (100 images): only <strong>52% agreement, \(\kappa=0.11\)</strong><em>weak</em>.</li>
+ </ul></div>
+ <div class="box warnbox"><span class="tag">Reported as a material limitation, not a footnote</span>
+ So they explicitly claim only to predict a <strong>VLM-judged</strong> defect — a scalable but labeler-specific target — and lean on the most reliable <strong>binary</strong> signal for headline numbers. This candor is exactly what a statistician wants to see.</div>
+</section>
+
+<!-- 17b. the label audit, in numbers -->
+<section>
+ <h2>The label audit, in numbers (why κ=0.11 is honest, not fatal)</h2>
+ <div class="cols">
+ <div>
+ <div class="box statview"><span class="tag">Two audits</span>
+ <strong>Judge vs itself</strong> (500 images, greedy vs temperature-0.8): 77.2% agree, κ=0.53; the binary defect rate barely moves — <strong>42.8% vs 43.2%</strong>.<br><br>
+ <strong>Judge vs a blind human</strong> (100 images, one author, judge labels withheld): agree on only <strong>52%</strong>, κ=0.11.</div>
+ </div>
+ <div>
+ <div class="box warnbox"><span class="tag">Where they disagree — and why</span>
+ The human marked <strong>79</strong> defective; the judge only <strong>43</strong>. Of the 42 the human flagged but the judge passed:
+ <ul>
+ <li><strong>judge leniency</strong> — missed crowd-face and garbled-text defects,</li>
+ <li><strong>protocol gap</strong> — the human saw <em>no prompt</em>, so couldn't check object count,</li>
+ <li>a <strong>stricter human threshold</strong>.</li>
+ </ul></div>
+ </div>
+ </div>
+ <div class="box keyidea"><span class="tag">The honest consequence</span>They claim only to predict a <strong>VLM-judged</strong> defect, and lean on the stable <strong>binary</strong> signal — the disagreement is reported in the main text, not buried in an appendix.</div>
+</section>
+
+<!-- 18. linear probe formal -->
+<section>
+ <h2>Step 3 — the probe, formally</h2>
+ <p>For each (step \(k\), block \(\ell\)) fit a logistic-regression probe on the pooled vector:</p>
+ <p>\[ p_k^{\ell}:\ \mathbb{R}^{d_\ell}\to[0,1],\qquad p_k^{\ell}(x)=\sigma(\boldsymbol\beta^\top x+\beta_0) \]</p>
+ <ul>
+ <li><strong>Input</strong> \(x=\bar{\mathbf f}_k^{\ell}\): the pooled activation of block \(\ell\) at step \(k\).</li>
+ <li><strong>Output</strong>: probability the run ends structurally defective.</li>
+ <li><strong>Parameters</strong>: only \(d_\ell+1\). No hidden layers on purpose.</li>
+ </ul>
+ <div class="box keyidea"><span class="tag">Key methodological choice</span>
+ The instrument is deliberately the <strong>simplest possible</strong>, so that what varies across the study is <strong>the representation being probed</strong>not the cleverness of the classifier. MLP probes appear only as an <em>ablation</em> (a control).</div>
+</section>
+
+<!-- 18b. walk-through: training ONE probe -->
+<section>
+ <h2>Walk-through: training <em>one</em> probe, end to end</h2>
+ <figure>
+ <svg viewBox="0 0 960 300" style="width:100%;height:auto;max-height:44vh" role="img" aria-label="training one probe pipeline">
+  <defs>
+   <marker id="w1_a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5b6678"/></marker>
+  </defs>
+  <text x="480" y="22" text-anchor="middle" font-size="15" fill="#b3541e" font-weight="700">pick ONE cell of the map: step 1, block D0R1</text>
+  <!-- box 1: data -->
+  <rect x="12" y="52" width="182" height="150" rx="10" fill="#eef5ff" stroke="#1f6feb"/>
+  <text x="103" y="78" text-anchor="middle" font-size="14" fill="#12233f" font-weight="700">the data</text>
+  <text x="103" y="104" text-anchor="middle" font-size="13" fill="#12233f">5,036 runs</text>
+  <text x="103" y="124" text-anchor="middle" font-size="13" fill="#12233f">each: pooled vector</text>
+  <text x="103" y="142" text-anchor="middle" font-size="13" fill="#1f6feb">f̄ (dim d) + label y</text>
+  <text x="103" y="168" text-anchor="middle" font-size="12" fill="#5b6678">y=1 defective</text>
+  <text x="103" y="185" text-anchor="middle" font-size="12" fill="#5b6678">y=0 clean</text>
+  <!-- box 2: split -->
+  <rect x="228" y="52" width="170" height="150" rx="10" fill="#f4f7fb" stroke="#5b6678"/>
+  <text x="313" y="78" text-anchor="middle" font-size="14" fill="#12233f" font-weight="700">stratified split</text>
+  <text x="313" y="98" text-anchor="middle" font-size="12" fill="#5b6678">(seed 42)</text>
+  <rect x="244" y="112" width="138" height="24" rx="5" fill="#cfe0fb"/><text x="313" y="129" text-anchor="middle" font-size="12" fill="#12233f">train ≈ 4,029</text>
+  <rect x="244" y="142" width="70" height="22" rx="5" fill="#e6edf6"/><text x="279" y="158" text-anchor="middle" font-size="11" fill="#12233f">val 504</text>
+  <rect x="320" y="142" width="62" height="22" rx="5" fill="#e6edf6"/><text x="351" y="158" text-anchor="middle" font-size="11" fill="#12233f">test 503</text>
+  <text x="313" y="185" text-anchor="middle" font-size="11" fill="#5b6678">same defect ratio in each</text>
+  <!-- box 3: fit -->
+  <rect x="432" y="52" width="170" height="150" rx="10" fill="#eafaf4" stroke="#0e8a6e"/>
+  <text x="517" y="78" text-anchor="middle" font-size="14" fill="#12233f" font-weight="700">fit on train</text>
+  <text x="517" y="106" text-anchor="middle" font-size="14" fill="#0e8a6e">σ(βᵀx + β₀)</text>
+  <text x="517" y="132" text-anchor="middle" font-size="12" fill="#12233f">logistic regression</text>
+  <text x="517" y="152" text-anchor="middle" font-size="12" fill="#12233f">d+1 weights</text>
+  <text x="517" y="180" text-anchor="middle" font-size="12" fill="#5b6678">trains in &lt; 1 second</text>
+  <!-- box 4: score -->
+  <rect x="636" y="52" width="150" height="150" rx="10" fill="#f4f7fb" stroke="#5b6678"/>
+  <text x="711" y="78" text-anchor="middle" font-size="14" fill="#12233f" font-weight="700">score test</text>
+  <text x="711" y="104" text-anchor="middle" font-size="12" fill="#12233f">each of 503 runs</text>
+  <text x="711" y="124" text-anchor="middle" font-size="12" fill="#12233f">→ P(defect)</text>
+  <text x="711" y="150" text-anchor="middle" font-size="12" fill="#5b6678">rank by score,</text>
+  <text x="711" y="167" text-anchor="middle" font-size="12" fill="#5b6678">compare to truth</text>
+  <!-- box 5: AUC -->
+  <rect x="820" y="70" width="128" height="114" rx="10" fill="#f3f0ff" stroke="#6b46c1"/>
+  <text x="884" y="112" text-anchor="middle" font-size="15" fill="#6b46c1" font-weight="700">test AUC</text>
+  <text x="884" y="150" text-anchor="middle" font-size="24" fill="#6b46c1" font-weight="800">0.846</text>
+  <!-- arrows -->
+  <line x1="196" y1="127" x2="226" y2="127" stroke="#5b6678" stroke-width="2.2" marker-end="url(#w1_a)"/>
+  <line x1="400" y1="127" x2="430" y2="127" stroke="#5b6678" stroke-width="2.2" marker-end="url(#w1_a)"/>
+  <line x1="604" y1="127" x2="634" y2="127" stroke="#5b6678" stroke-width="2.2" marker-end="url(#w1_a)"/>
+  <line x1="788" y1="127" x2="818" y2="127" stroke="#5b6678" stroke-width="2.2" marker-end="url(#w1_a)"/>
+ </svg>
+ <figcaption>One probe = one (step, block) cell. Freeze step 1 / block D0R1, split the 5,036 runs, fit a logistic regression on the training runs only, score the untouched test runs, and read the AUC — 0.846 for this cell.</figcaption>
+ </figure>
+</section>
+
+<!-- 18c. reading an AUC from zero -->
+<section>
+ <h2>Reading an AUC from zero — a worked micro-example</h2>
+ <div class="cols">
+ <div>
+ <p>Say a probe scores <strong>3 defective</strong> and <strong>3 clean</strong> held-out runs:</p>
+ <table style="font-size:.7em">
+ <tr><th>run</th><th>truth</th><th>score</th></tr>
+ <tr><td>A</td><td>defective</td><td>0.91</td></tr>
+ <tr><td>B</td><td>defective</td><td>0.66</td></tr>
+ <tr><td>C</td><td>clean</td><td>0.60</td></tr>
+ <tr><td>D</td><td>defective</td><td>0.55</td></tr>
+ <tr><td>E</td><td>clean</td><td>0.40</td></tr>
+ <tr><td>F</td><td>clean</td><td>0.20</td></tr>
+ </table>
+ </div>
+ <div>
+ <div class="box statview"><span class="tag">Count concordant pairs</span>Form all <strong>3 × 3 = 9</strong> (defective, clean) pairs. AUC = the fraction where the defective run scores higher.<br>
+ A &gt; C,E,F ✓✓✓ · B &gt; C,E,F ✓✓✓ · D &gt; E,F ✓✓ but D &lt; C ✗ → <strong>8 of 9</strong>.<br>
+ <strong>AUC = 8/9 ≈ 0.89.</strong></div>
+ <div class="box keyidea"><span class="tag">So the real 0.846 means…</span>Across every defective/clean pair in the real 503-run test set, the probe ranks the defective one higher <strong>84.6%</strong> of the time. 0.5 = coin flip; 1.0 = perfect.</div>
+ </div>
+ </div>
+</section>
+
+<!-- 18d. the full sweep -->
+<section>
+ <h2>Doing this everywhere — the full sweep, cheaply</h2>
+ <div class="box intuition"><span class="tag">How the whole map is built</span>Repeat that one-probe recipe for <strong>every (step, block) cell</strong>: <strong>50 steps × 22 blocks = 1,100 probes</strong> for the pooled label — then again per defect category. Each is a <strong>&lt; 1-second</strong> logistic fit on features that were <strong>already computed</strong> during generation.</div>
+ <div class="box statview"><span class="tag">Where the cost actually is</span>The expensive, one-time step is generating + labeling the 5,036 images. The analysis itself — pool activations, fit ~1,100 tiny regressions — is nearly free. That is why this is a <strong>characterization tool</strong>, not a new model to train.</div>
+ <div class="box keyidea"><span class="tag">The output</span>1,100 AUCs → the 22 × 50 <strong>AUC map</strong>; summarize each step by its best block, AUC*(k), and read <strong>onset</strong> (when) and <strong>depth</strong> (where).</div>
+</section>
+
+<!-- 19. three views of the map -->
+<section>
+ <h2>Step 4 — reading the AUC map three ways</h2>
+ <div class="box"><span class="tag" style="background:var(--accent);color:#fff">View 1 · The AUC map (when &amp; where)</span>
+ The \(50\times 22\) matrix of test AUCs. Summarize by the best-block-per-step curve \(\ \mathrm{AUC}^*(k)=\max_\ell \mathrm{AUC}(k,\ell)\). Read across → <strong>onset</strong> (how early); read down → <strong>which layers</strong>.</div>
+ <div class="box"><span class="tag" style="background:var(--accent2);color:#fff">View 2 · Type-resolved readout (the central view)</span>
+ Re-run everything <strong>per defect category</strong>. Positives = runs defective of category \(c\); trace \(\mathrm{AUC}_c^*(k)\) and record each type's <strong>peak block</strong> \(\ell^{*(c)}\). This exposes the depth structure.</div>
+ <div class="box"><span class="tag" style="background:#6b46c1;color:#fff">View 3 · One application · early-abort</span>
+ Deploy the best probe in a loop: denoise to step \(k^*\), score, and <strong>resample</strong> if it predicts a defect — cheaply killing bad runs early.</div>
+</section>
+
+<!-- DIAGRAM 4 · AUC heatmap schematic -->
+<section>
+ <h2>What the AUC map looks like (schematic)</h2>
+ <figure>
+ <svg viewBox="0 0 960 400" style="width:100%;height:auto;max-height:46vh" role="img" aria-label="AUC heatmap schematic">
+  <defs>
+   <marker id="hm_a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5b6678"/></marker>
+   <linearGradient id="hm_leg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#e6edf6"/><stop offset=".5" stop-color="#93bbf5"/><stop offset="1" stop-color="#1f6feb"/></linearGradient>
+  </defs>
+  <!-- axis labels -->
+  <text x="20" y="200" font-size="15" fill="#12233f" transform="rotate(-90 20 200)" text-anchor="middle">block (depth) ℓ</text>
+  <text x="500" y="392" text-anchor="middle" font-size="15" fill="#12233f">denoising step k  (1 = noisiest → 50 = cleanest)</text>
+  <!-- row labels -->
+  <text x="120" y="82" text-anchor="end" font-size="14" fill="#5b6678">U2</text>
+  <text x="120" y="132" text-anchor="end" font-size="14" fill="#5b6678">U0</text>
+  <text x="120" y="182" text-anchor="end" font-size="14" fill="#5b6678">Mid</text>
+  <text x="120" y="232" text-anchor="end" font-size="14" fill="#5b6678">D1</text>
+  <text x="120" y="282" text-anchor="end" font-size="14" fill="#5b6678">D0R0</text>
+  <!-- grid: 8 cols x 5 rows, cell 90x48 start x=130 y=58 -->
+  <!-- row U2 -->
+  <rect x="130" y="58" width="88" height="46" fill="#1f6feb"/><rect x="220" y="58" width="88" height="46" fill="#1f6feb"/><rect x="310" y="58" width="88" height="46" fill="#1f6feb"/><rect x="400" y="58" width="88" height="46" fill="#4a8bf0"/><rect x="490" y="58" width="88" height="46" fill="#4a8bf0"/><rect x="580" y="58" width="88" height="46" fill="#5a93ef"/><rect x="670" y="58" width="88" height="46" fill="#7aa9f4"/><rect x="760" y="58" width="88" height="46" fill="#93bbf5"/>
+  <!-- row U0 -->
+  <rect x="130" y="108" width="88" height="46" fill="#1f6feb"/><rect x="220" y="108" width="88" height="46" fill="#1f6feb"/><rect x="310" y="108" width="88" height="46" fill="#4a8bf0"/><rect x="400" y="108" width="88" height="46" fill="#4a8bf0"/><rect x="490" y="108" width="88" height="46" fill="#5a93ef"/><rect x="580" y="108" width="88" height="46" fill="#7aa9f4"/><rect x="670" y="108" width="88" height="46" fill="#93bbf5"/><rect x="760" y="108" width="88" height="46" fill="#93bbf5"/>
+  <!-- row Mid -->
+  <rect x="130" y="158" width="88" height="46" fill="#4a8bf0"/><rect x="220" y="158" width="88" height="46" fill="#4a8bf0"/><rect x="310" y="158" width="88" height="46" fill="#4a8bf0"/><rect x="400" y="158" width="88" height="46" fill="#5a93ef"/><rect x="490" y="158" width="88" height="46" fill="#5a93ef"/><rect x="580" y="158" width="88" height="46" fill="#7aa9f4"/><rect x="670" y="158" width="88" height="46" fill="#7aa9f4"/><rect x="760" y="158" width="88" height="46" fill="#93bbf5"/>
+  <!-- row D1 -->
+  <rect x="130" y="208" width="88" height="46" fill="#1f6feb"/><rect x="220" y="208" width="88" height="46" fill="#4a8bf0"/><rect x="310" y="208" width="88" height="46" fill="#4a8bf0"/><rect x="400" y="208" width="88" height="46" fill="#5a93ef"/><rect x="490" y="208" width="88" height="46" fill="#7aa9f4"/><rect x="580" y="208" width="88" height="46" fill="#7aa9f4"/><rect x="670" y="208" width="88" height="46" fill="#93bbf5"/><rect x="760" y="208" width="88" height="46" fill="#93bbf5"/>
+  <!-- row D0R0 (weakest) -->
+  <rect x="130" y="258" width="88" height="46" fill="#c3d8f7"/><rect x="220" y="258" width="88" height="46" fill="#c3d8f7"/><rect x="310" y="258" width="88" height="46" fill="#93bbf5"/><rect x="400" y="258" width="88" height="46" fill="#93bbf5"/><rect x="490" y="258" width="88" height="46" fill="#c3d8f7"/><rect x="580" y="258" width="88" height="46" fill="#c3d8f7"/><rect x="670" y="258" width="88" height="46" fill="#e6edf6"/><rect x="760" y="258" width="88" height="46" fill="#e6edf6"/>
+  <!-- highlight step-1 column -->
+  <rect x="128" y="56" width="92" height="250" fill="none" stroke="#b3541e" stroke-width="3" stroke-dasharray="6 4"/>
+  <text x="174" y="330" text-anchor="middle" font-size="13" fill="#b3541e" font-weight="700">already bright at step 1</text>
+  <!-- col ticks -->
+  <text x="174" y="322" text-anchor="middle" font-size="12" fill="#5b6678">1</text><text x="534" y="322" text-anchor="middle" font-size="12" fill="#5b6678">25</text><text x="804" y="322" text-anchor="middle" font-size="12" fill="#5b6678">50</text>
+  <!-- legend -->
+  <rect x="892" y="58" width="20" height="196" fill="url(#hm_leg)" stroke="#dbe3ee"/>
+  <text x="922" y="66" font-size="12" fill="#12233f">0.85</text>
+  <text x="922" y="160" font-size="12" fill="#12233f">0.70</text>
+  <text x="922" y="252" font-size="12" fill="#12233f">0.50</text>
+  <text x="902" y="278" text-anchor="middle" font-size="12" fill="#5b6678">AUC</text>
+ </svg>
+ <figcaption>Schematic of the real result: rows = blocks, columns = steps, brighter = more predictable. The map is bright from column 1 (the model "knows" early) and stays bright, dimming only at the finest encoder block (D0R0).</figcaption>
+ </figure>
+</section>
+
+<!-- 20. early abort formula -->
+<section>
+ <h2>View 3 — the early-abort loop (application, not the point)</h2>
+ <div class="cols">
+ <div>
+ <p>Run the probe at step \(k^*\); if score &gt; threshold \(\tau\), abort and resample a fresh seed. Expected model calls per accepted image:</p>
+ <p style="font-size:.8em">\[ \mathbb{E}[\text{calls}]=\frac{\rho k^*+\mathrm{FPR}(1{-}\rho)k^*+\big(1{-}\rho{-}\mathrm{FPR}(1{-}\rho)\big)T}{1-\rho-\mathrm{FPR}(1-\rho)} \]</p>
+ <div class="box statview"><span class="tag">In words</span>\(\rho\) = defect rate, FPR = probe false-positive rate, \(T=50\). Aborted runs cost only \(k^*\) steps instead of 50; the formula is just the expected cost of an accept/reject loop.</div>
+ </div>
+ <div>
+ <div class="box keyidea"><span class="tag">The kicker</span>Because the signal is there at <strong>step 1</strong>, \(k^*=1\): an aborted run costs essentially <strong>one</strong> model call out of 50. Killing bad runs is nearly <strong>free</strong>.</div>
+ <div class="box warnbox"><span class="tag">Honesty</span>They deploy with the <strong>held-out</strong> AUC (0.761), not the in-distribution peak (0.846) — the real-world number, stated up front.</div>
+ </div>
+ </div>
+</section>
+
+<!-- DIAGRAM 5 · early-abort Pareto schematic -->
+<section>
+ <h2>Why early-abort helps (the trade-off, schematic)</h2>
+ <figure>
+ <svg viewBox="0 0 820 430" style="width:100%;height:auto;max-height:46vh" role="img" aria-label="early-abort Pareto schematic">
+  <defs>
+   <marker id="pa_a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5b6678"/></marker>
+  </defs>
+  <!-- axes -->
+  <line x1="90" y1="360" x2="90" y2="40" stroke="#5b6678" stroke-width="2" marker-end="url(#pa_a)"/>
+  <line x1="90" y1="360" x2="770" y2="360" stroke="#5b6678" stroke-width="2" marker-end="url(#pa_a)"/>
+  <text x="30" y="200" font-size="14" fill="#12233f" transform="rotate(-90 30 200)" text-anchor="middle">defect rate of accepted images</text>
+  <text x="430" y="404" text-anchor="middle" font-size="14" fill="#12233f">compute · UNet calls per accepted image</text>
+  <text x="120" y="392" text-anchor="middle" font-size="12" fill="#5b6678">~50</text>
+  <text x="581" y="392" text-anchor="middle" font-size="12" fill="#5b6678">~97</text>
+  <text x="76" y="365" text-anchor="end" font-size="12" fill="#5b6678">0%</text>
+  <text x="76" y="73" text-anchor="end" font-size="12" fill="#5b6678">50%</text>
+  <!-- IDP sweep curve (threshold sweep) -->
+  <path d="M110,69 C150,150 130,220 128,240 C200,300 420,352 581,360" fill="none" stroke="#1f6feb" stroke-width="3"/>
+  <!-- points -->
+  <circle cx="110" cy="69" r="7" fill="#5b6678"/><text x="122" y="60" font-size="13" fill="#12233f">no filtering (48.5%, 50)</text>
+  <g><line x1="119" y1="59" x2="137" y2="77" stroke="#b3245b" stroke-width="2.5"/><line x1="137" y1="59" x2="119" y2="77" stroke="#b3245b" stroke-width="2.5"/></g><text x="146" y="72" font-size="13" fill="#b3245b">random abort (48.6%, 51.8) — no gain</text>
+  <circle cx="128" cy="240" r="8" fill="#1f6feb"/><text x="144" y="245" font-size="14" fill="#1f6feb" font-weight="700">IDP early-abort (20%, 51.8)</text>
+  <circle cx="581" cy="360" r="7" fill="#0e8a6e"/><text x="570" y="345" text-anchor="end" font-size="13" fill="#0e8a6e">full reject-sampling (0%, 97.1)</text>
+  <circle cx="119" cy="360" r="6" fill="none" stroke="#5b6678" stroke-width="2"/><text x="132" y="352" font-size="12" fill="#5b6678">oracle (0%, 50.9)</text>
+  <!-- annotation -->
+  <text x="470" y="120" text-anchor="middle" font-size="14" fill="#5b6678">lower-left is better</text>
+  <text x="470" y="142" text-anchor="middle" font-size="13" fill="#5b6678">(fewer calls, fewer defects)</text>
+ </svg>
+ <figcaption>Because the probe fires at step 1, aborting a bad run costs ~1 call out of 50. IDP cuts the accepted-image defect rate at almost the same compute; random abort at the same budget does nothing — the saving comes from the probe, not from stopping early.</figcaption>
+ </figure>
+</section>
+
+<!-- ============ PART 4 DIVIDER ============ -->
+<section data-background-color="#12233f">
+ <div class="divider"><div class="kicker">Part 4</div><h2>Main results</h2><p>Three pillars — each shown with the real figure.</p></div>
+</section>
+
+<!-- 21. finding 1 fig2 -->
+<section>
+ <h2>Pillar 1 — Early, persistent, linear</h2>
+ <figure>
+ <img src="figures/fig2_overall_auc.png" alt="overall AUC map and best-block curve">
+ <figcaption><strong>Left:</strong> the AUC map — rows = 22 blocks, columns = 50 steps, brighter = more predictable. Almost the whole grid is bright (0.77–0.85); only the finest encoder block (D0R0, bottom row) is dim at the earliest steps. <strong>Right:</strong> best-block AUC per step, with bootstrap band — <strong>0.846 at step 1</strong>, gently declining to <strong>0.80</strong> by step 50. Above chance (0.5, dashed) from step 1.</figcaption>
+ </figure>
+ <div class="box result"><span class="tag">Result</span>Defects are <strong>committed early and stay legible</strong><em>not</em> a mid-trajectory peak. 0.846 (step 1) → 0.842 (step 5) → 0.829 (step 25) → 0.80 (step 50).</div>
+</section>
+
+<!-- 21b. the baselines, concretely -->
+<section>
+ <h2>What we compare against — three honest baselines</h2>
+ <div class="box"><span class="tag" style="background:var(--muted);color:#fff">chance = 0.500</span>The floor. A probe with no signal ranks a defective vs a clean run no better than a coin flip.</div>
+ <div class="box statview"><span class="tag">post-hoc CLIP = 0.827</span>The <strong>fair rival</strong>: a logistic probe on CLIP features of the <em>finished</em> image — the strongest "just look at the final picture" detector. If our step-1 <em>internal</em> probe merely <strong>matches</strong> it, that is the honest bar we hold ourselves to.</div>
+ <div class="box warnbox"><span class="tag">final latent z₀ = 0.570</span>A <strong>control</strong>: the raw 4-D output latent with no learned features. Near-chance — proving the signal lives in the UNet's <em>learned</em> activations, not in the pixels themselves.</div>
+</section>
+
+<!-- 22. ablation table -->
+<section>
+ <h2>Pillar 1, sharpened — the ablations</h2>
+ <table>
+ <tr><th>probe</th><th>feature source</th><th>params</th><th>AUC</th></tr>
+ <tr><td><strong>linear</strong></td><td>best block D0R1 @ step 1</td><td>321</td><td><strong class="win">0.846</strong></td></tr>
+ <tr><td>MLP (64 hidden)</td><td>best block D0R1 @ step 1</td><td>20,609</td><td>0.790</td></tr>
+ <tr><td>linear</td><td>concat all 22 blocks</td><td>20,161</td><td>0.801</td></tr>
+ <tr><td>linear</td><td>final latent \(z_0\) (4-D)</td><td>5</td><td>0.570</td></tr>
+ <tr><td>linear</td><td>post-hoc CLIP (finished image)</td><td>513</td><td>0.827</td></tr>
+ <tr><td><em>chance</em></td><td>—</td><td>—</td><td>0.500</td></tr>
+ </table>
+ <div class="box statview"><span class="tag">Linear &gt; MLP</span>A 64× bigger neural net does <strong>worse</strong> (0.790). The extra capacity <em>overfits</em>; the signal is genuinely linear — the cleanest evidence the property is in the representation, not the probe.</div>
+</section>
+
+<!-- 22b. ablation takeaways -->
+<section>
+ <h2>Pillar 1, sharpened — what the ablations mean</h2>
+ <div class="box statview"><span class="tag">Local &gt; global</span>One good block (0.846) beats concatenating all 22 (0.801). Pooling the whole network <em>dilutes</em> rather than helps — the signal is local to a block.</div>
+ <div class="box result"><span class="tag">Parity, stated honestly</span>Step-1 internal (0.846) ≈ reading the <strong>finished</strong> image with CLIP (0.827). Same accuracy — but available at step 1, linearly, and with a depth-resolved account.</div>
+ <div class="box warnbox"><span class="tag">And the control</span>The raw final latent \(z_0\) is near-uninformative (0.570): the signal lives in the UNet's <strong>learned features</strong>, not the pixels.</div>
+</section>
+
+<!-- 23. finding 2 fig3 -->
+<section>
+ <h2>Pillar 2 — each failure type lives at a different depth</h2>
+ <figure>
+ <img src="figures/fig3_pertype_auc.png" alt="per-type AUC vs step" style="max-height:44vh">
+ <figcaption>Per-category AUC vs step. Five of six sit high &amp; flat (0.90–0.97), all significant from step 1. <strong>Count (red)</strong> is the lone exception — lowest and declining.</figcaption>
+ </figure>
+ <div class="box result"><span class="tag">The central result</span>The temporal curves overlap — the informative axis is not <em>when</em> but <strong>where</strong>: each defect type peaks at a <strong>different block</strong> (next slide).</div>
+</section>
+
+<!-- 23a. reading the per-type table -->
+<section>
+ <h2>Reading the per-type table — one subtlety first</h2>
+ <div class="box statview"><span class="tag">Defects are multi-label</span>One image can carry <strong>several</strong> defects at once — a limb-prompt image may also have a broken hand. So a category's positives are counted <em>across all prompts</em>, not just its own prompt set. That is why <strong>hand has 1,098 positives</strong> even though the hand prompts produced only 840 images.</div>
+ <div class="box intuition"><span class="tag">The comparison is kept fair</span>Every per-category probe reuses the <strong>same clean pool of 2,771</strong> defect-free runs as its negatives; only the positives change. So the per-type AUCs are directly comparable.</div>
+ <div class="box warnbox"><span class="tag">Underpowered rows, flagged</span><strong>count (55)</strong> and <strong>physics (90)</strong> have few positives — wide confidence intervals — so we lead with the <em>qualitative</em> pattern (counting is lowest and declining), not the exact magnitudes.</div>
+</section>
+
+<!-- 23b. finding 2 table -->
+<section>
+ <h2>Pillar 2 — the depth-resolved readout map</h2>
+ <table>
+ <tr><th>category</th><th>n<sub>pos</sub></th><th>peak AUC</th><th>peak step</th><th>peak block</th></tr>
+ <tr><td>text</td><td>451</td><td>0.970</td><td>7</td><td>D3R0 (bottleneck)</td></tr>
+ <tr><td>physics</td><td>90</td><td>0.962</td><td>3</td><td>U1R0</td></tr>
+ <tr><td>limb</td><td>452</td><td>0.954</td><td>3</td><td>U0R0</td></tr>
+ <tr><td>hand</td><td>1098</td><td>0.925</td><td>1</td><td>U2R2</td></tr>
+ <tr><td>face</td><td>269</td><td>0.902</td><td>1</td><td>U1R0</td></tr>
+ <tr><td>count</td><td>55</td><td>0.858</td><td>3</td><td>U2R0</td></tr>
+ </table>
+ <div class="box result"><span class="tag">The central result</span>The peak <strong>block differs by type</strong>: text from the deep bottleneck, hands/limbs from decoder blocks, faces mid-decoder. A <strong>depth-resolved map</strong> of where each defect is represented — the analysis no quality-predictor provides.</div>
+</section>
+
+<!-- 24. counting exception -->
+<section>
+ <h2>Pillar 3 — the counting exception (the tell)</h2>
+ <div class="box result"><span class="tag">Result</span>
+ Object-<strong>count</strong> defects are <strong>both</strong> the hardest to decode (peak 0.858 vs 0.90–0.97) <strong>and</strong> the <em>only</em> category whose decodability <strong>declines</strong> over denoising: <strong>0.86 → 0.72</strong>.</div>
+ <div class="box intuition"><span class="tag">Why this is interpretable, not noise</span>
+ "How many apples" is a <strong>global, semantic</strong> property. Our features are <em>spatially averaged</em> local activations — great at "is this hand malformed?" (local), poor at "are there exactly three?" (global). And the model appears to <strong>commit to object count late</strong>. So its signal <em>fades</em> as local detail sharpens — the opposite of the local defects.</div>
+ <div class="box warnbox"><span class="tag">Honest caveat</span>Count &amp; physics are <strong>underpowered</strong> (only 55 and 90 positives; wide CIs). They lead with the <em>qualitative</em> exception — lowest &amp; declining — not its exact magnitude.</div>
+</section>
+
+<!-- 24b. SD3.5 setup, concretely -->
+<section>
+ <h2>The second model, concretely — SD3.5, a DiT</h2>
+ <div class="cols">
+ <div>
+ <div class="box intuition"><span class="tag">A different backbone</span>SD3.5 is an <strong>MMDiT</strong> — a <em>Transformer</em>, not a UNet — sampled with <strong>rectified flow over T=28 steps</strong>. Instead of 22 residual blocks we hook <strong>24 transformer blocks</strong>, taking each block's image-stream hidden state and <strong>average-pooling over its tokens</strong>.</div>
+ </div>
+ <div>
+ <div class="box statview"><span class="tag">Same protocol, matched fairly</span>Same prompts, same judge, same linear-probe recipe. Steps are <strong>normalized to [0,1]</strong> so a 28-step DiT and a 50-step UNet share one axis. The judge is even more self-consistent here (<strong>κ=0.73</strong> vs 0.53).</div>
+ </div>
+ </div>
+ <div class="box result"><span class="tag">A far cleaner model</span>Over <strong>4,436 images</strong> the overall defect rate is only <strong>3.1%</strong> (just <strong>139</strong> defective) — so per-type probes are viable only for the well-populated labels: overall, counting (n=90), and text (n=35).</div>
+</section>
+
+<!-- 25. cross-arch fig6 -->
+<section>
+ <h2>It reproduces on a <em>different</em> architecture (SD3.5, a DiT)</h2>
+ <figure>
+ <img src="figures/fig6_cross_auc.png" alt="cross-architecture AUC vs normalized step">
+ <figcaption>Best-block AUC vs <strong>normalized</strong> step for a UNet (SD1.5, blue) and a Transformer-based DiT (SD3.5, red). Both significant from the first step, both flat, neither peaks mid-way. The characterization is <strong>not UNet-specific</strong>.</figcaption>
+ </figure>
+ <div class="box result"><span class="tag">Cross-architecture result</span>On the DiT the probe hits <strong>AUC 0.886</strong> (step 2 of 28), linear again <strong>beats</strong> MLP (0.886 vs 0.859) and the 24-block concat (0.795); final latent near-useless (0.616). Same early / persistent / linear story on a completely different backbone.</div>
+</section>
+
+<!-- 26. migration table -->
+<section>
+ <h2>What changes across models: failures migrate anatomy → semantics</h2>
+ <div class="cols">
+ <div>
+ <table>
+ <tr><th>category</th><th>SD1.5 (UNet)</th><th>SD3.5 (DiT)</th></tr>
+ <tr><td>limb</td><td>79.9%</td><td>0.1%</td></tr>
+ <tr><td>hand</td><td>69.5%</td><td>0.6%</td></tr>
+ <tr><td>text</td><td>60.7%</td><td>4.9%</td></tr>
+ <tr><td>face</td><td>27.0%</td><td>0.7%</td></tr>
+ <tr><td>count</td><td>21.4%</td><td>12.5%</td></tr>
+ <tr><td>physics</td><td>11.1%</td><td>0.4%</td></tr>
+ <tr><td><strong>overall</strong></td><td><strong>44.9%</strong></td><td><strong>3.1%</strong></td></tr>
+ </table>
+ </div>
+ <div>
+ <div class="box result"><span class="tag">Result</span>The stronger DiT nearly <strong>eliminates anatomy errors</strong> (≤1%). Overall defect rate crashes <strong>44.9% → 3.1%</strong>. What remains is <strong>semantic</strong>: counting and text.</div>
+ <div class="box warnbox"><span class="tag">Caveat</span>The two models differ in both architecture <em>and</em> strength — reported as a <em>descriptive</em> migration, not a causal claim.</div>
+ </div>
+ </div>
+</section>
+
+<!-- 26b. migration twist -->
+<section>
+ <h2>The beautiful twist: counting flips</h2>
+ <div class="box intuition"><span class="tag">The twist</span><strong>Counting</strong>the weak UNet's hardest, <em>declining</em> exception (peak 0.858, fading to 0.72) — becomes the strong DiT's <em>dominant</em> failure and its <em>most decodable</em> category (AUC <strong>0.986</strong>).</div>
+ <div class="box result"><span class="tag">What it means</span>Capability buys <strong>anatomical correctness</strong>, <em>not</em> <strong>semantic faithfulness</strong>. The errors a strong model still makes are semantic (how many, what the text says) — and those are exactly the ones sharply legible in its activations.</div>
+ <div class="box statview"><span class="tag">Why it's a clean story</span>Counting is the one defect well-powered in <em>both</em> models, so the flip is a genuine, tellable inter-model difference — not an artifact of small samples.</div>
+</section>
+
+<!-- 26c. deployment setup -->
+<section>
+ <h2>The application, set up honestly — a fresh held-out test</h2>
+ <div class="box intuition"><span class="tag">A real deployment, not the training numbers</span>Early-abort is evaluated on a <strong>fresh held-out set of 503 images</strong> the probe never saw. On this set the probe's <strong>deployment AUC is 0.761</strong> — <em>below</em> the in-distribution 0.846, and reported up front.</div>
+ <div class="box statview"><span class="tag">The loop, in one line</span>Denoise to step k*=1 → score → if score &gt; τ=0.1, throw the run away and restart with a new seed; else finish it. Because the probe fires at <strong>step 1</strong>, an aborted run wastes essentially <strong>one</strong> of 50 model calls.</div>
+ <div class="box keyidea"><span class="tag">What "good" looks like</span>We want the accepted images' defect rate to drop <em>without</em> the average model-calls-per-accepted-image climbing much. The next slide reads that trade-off.</div>
+</section>
+
+<!-- 27. early-abort results fig4 -->
+<section>
+ <h2>The one application: early-abort saves ~47% compute</h2>
+ <div class="cols">
+ <div>
+ <table>
+ <tr><th>method</th><th>defect ↓</th><th>calls/acc ↓</th></tr>
+ <tr><td>no filtering</td><td>48.5%</td><td>50.0</td></tr>
+ <tr><td>full reject-sampling</td><td>0%</td><td>97.1</td></tr>
+ <tr><td>random abort (τ=0.1)</td><td>48.6%</td><td>51.8</td></tr>
+ <tr><td><strong>IDP early-abort (τ=0.1)</strong></td><td><strong class="win">20.0%</strong></td><td><strong>51.8</strong></td></tr>
+ <tr><td><em>oracle</em></td><td>0%</td><td>50.9</td></tr>
+ </table>
+ <div class="box result"><span class="tag">Result</span>Cuts accepted-image defect rate <strong>48.5% → 20%</strong> at <strong>51.8</strong> calls vs <strong>97.1</strong> for full reject-sampling — a <strong>46.7% saving</strong>. Random abort at the same budget does nothing (48.6%): the saving comes from the <em>probe</em>, not from stopping early.</div>
+ </div>
+ <div>
+ <figure>
+ <img src="figures/fig4_pareto.png" alt="early-abort Pareto" style="max-height:44vh">
+ <figcaption>Held-out Pareto: lower-left is better (fewer calls, fewer defects). IDP (blue sweep) dominates random abort (purple ×) and lands far cheaper than full reject-sampling (green ▲, ~97 calls). Real but <em>bounded</em>limited by held-out AUC 0.761.</figcaption>
+ </figure>
+ </div>
+ </div>
+</section>
+
+<!-- ============ PART 5 DIVIDER ============ -->
+<section data-background-color="#12233f">
+ <div class="divider"><div class="kicker">Part 5</div><h2>Deeper checks — we tested the hard questions too</h2></div>
+</section>
+
+<!-- 28. per-block ranking appendix -->
+<section>
+ <h2>Appendix — the signal is broad, not a lucky block</h2>
+ <div class="cols">
+ <div>
+ <p>All 22 blocks ranked by best-step AUC. The spread is a <strong>narrow band, 0.772–0.846</strong>the defect signal is <strong>distributed across the whole network</strong>, spanning both encoder and decoder. Only the finest encoder block (D0R0) is clearly weakest.</p>
+ <div class="box statview"><span class="tag">Statistician's view</span>The story is <em>not</em> "one magic layer wins". It's "the signal is everywhere, and the interesting structure only appears when you split <strong>by failure type</strong>" (Pillar 2). An honest framing that resists cherry-picking.</div>
+ </div>
+ <div>
+ <table style="font-size:.58em">
+ <tr><th>block</th><th>peak AUC</th><th>step</th></tr>
+ <tr><td>D0R1</td><td>0.846</td><td>1</td></tr>
+ <tr><td>D1R0</td><td>0.841</td><td>2</td></tr>
+ <tr><td>U2R1</td><td>0.839</td><td>6</td></tr>
+ <tr><td>D1R1</td><td>0.836</td><td>6</td></tr>
+ <tr><td>U2R2</td><td>0.834</td><td>5</td></tr>
+ <tr><td>…</td><td>…</td><td>…</td></tr>
+ <tr><td>D3R0</td><td>0.793</td><td>23</td></tr>
+ <tr><td>D0R0</td><td>0.772</td><td>31</td></tr>
+ </table>
+ <div class="footnote">Appendix Table: all 22 residual blocks, pooled defect label.</div>
+ </div>
+ </div>
+</section>
+
+<!-- 29. SD3.5 details appendix -->
+<section>
+ <h2>Appendix — the DiT map + a visual audit of the migration</h2>
+ <div class="cols">
+ <div>
+ <figure>
+ <img src="figures/figA_sd35_auc.png" alt="SD3.5 AUC map and curve" style="max-height:40vh">
+ <figcaption>SD3.5 analogue: 24 transformer blocks × 28 steps. Same early / persistent / broad shape as the UNet — flat near 0.86–0.89 from step 1.</figcaption>
+ </figure>
+ </div>
+ <div>
+ <div class="box result"><span class="tag">Well-powered where it counts</span>On SD3.5 only <strong>counting</strong> (n=90, AUC <strong>0.986</strong>) and <strong>text</strong> (n=35, AUC <strong>0.981</strong>) have enough positives — and both are sharply decodable. Anatomy has ≤5 positives (the model just doesn't make those errors).</div>
+ <div class="box intuition"><span class="tag">Visual audit (Fig. in appendix)</span>All 100 blind-annotated SD3.5 images, bordered by human verdict: red (defective, 61) clusters in <strong>counting &amp; text</strong>; green (clean, 39) fills the anatomy categories. The anatomy→semantics migration is visible at a glance — a picture, not just a number.</div>
+ </div>
+ </div>
+ <div class="footnote">SD3.5 judge self-consistency κ=0.73 (higher than SD1.5's 0.53). figB_sd35_qual.png is a 100-image contact sheet; described here rather than embedded.</div>
+</section>
+
+<!-- 30. qualitative fig5 -->
+<section>
+ <h2>Appendix — what the probe actually sees</h2>
+ <figure>
+ <img src="figures/fig5_qualitative.png" alt="qualitative step-1 vs final">
+ <figcaption>Representative runs. <strong>Top:</strong> the step-1 state — pure noise to us. <strong>Bottom:</strong> the final image + verdict (TP = correctly aborted defective; TN = correctly kept clean; FP = a clean run needlessly aborted). The linear probe separates these from the noisy top row.</figcaption>
+ </figure>
+ <div class="box statview"><span class="tag">A reassuring error profile</span>The dominant mistake is <strong>conservative</strong>a clean run wrongly aborted (false positive), <em>not</em> a defective run passed. For a filter, erring toward caution is the benign failure mode.</div>
+</section>
+
+<!-- ============ PART 6 DIVIDER ============ -->
+<section data-background-color="#12233f">
+ <div class="divider"><div class="kicker">Part 6</div><h2>Why it's deep · limits · takeaways</h2></div>
+</section>
+
+<!-- 31. why deep -->
+<section>
+ <h2>Why this is deep</h2>
+ <div class="box deep"><span class="tag">Why it's deep</span>
+ <ul>
+ <li><strong>A representation claim, not a gadget.</strong> Linear-beats-nonlinear says the failure signal is <em>already linearly encoded</em>a statement about the model's internal geometry, the kind interpretability aims for.</li>
+ <li><strong>Structure, not a single score.</strong> The depth-resolved, type-specific map (text→bottleneck, hands→decoder) is a <em>mechanistic account of where</em> each failure lives — beyond any aggregate quality predictor.</li>
+ <li><strong>An exception that explains the rule.</strong> Counting's uniquely <em>declining</em> curve, plus its flip to dominant on the stronger model, ties the phenomenon to a clean idea: local vs. global, committed-early vs. committed-late.</li>
+ <li><strong>Architecture-general.</strong> Holds on both dominant designs (UNet &amp; DiT).</li>
+ </ul></div>
+</section>
+
+<!-- 32. limitations -->
+<section>
+ <h2>Honest limitations (stated in the main text)</h2>
+ <div class="box warnbox"><span class="tag">Caveat</span>
+ <ul>
+ <li><strong>Label validity.</strong> The judge agrees with a blind human only weakly (κ=0.11). The target is a <em>VLM-judged</em> defect, tracking human judgment imperfectly — <strong>said plainly, not buried</strong>.</li>
+ <li><strong>Capability vs. architecture confound.</strong> The two models differ on both axes; the anatomy→semantics migration is descriptive, not causal.</li>
+ <li><strong>Power &amp; scope.</strong> Count and physics are underpowered (wide CIs); on SD3.5 only two categories clear the bar.</li>
+ <li><strong>Parity, not dominance.</strong> The mid-denoising probe <em>matches</em> post-hoc CLIP (0.846 vs 0.827) rather than beating it; deployment AUC (0.761) is below in-distribution (0.846).</li>
+ </ul></div>
+ <div class="box statview"><span class="tag">Statistician's view</span>None of these undercut the central, collision-free finding — they <strong>bound its strength</strong>, and are reported in-text rather than hidden in an appendix. That is scientific maturity.</div>
+</section>
+
+<!-- 33. takeaways -->
+<section>
+ <h2>Takeaways</h2>
+ <div class="box intuition"><span class="tag">Three things to remember</span>
+ <ol>
+ <li>A diffusion model's <strong>eventual structural failure is linearly readable from its very first drawing step</strong>a simple logistic regression on internal features, AUC 0.846.</li>
+ <li><strong>Different failures live at different depths</strong>, and <strong>counting is a semantic exception</strong> (hardest, declining) — a mechanistic map, not a single score.</li>
+ <li>It <strong>reproduces on a second architecture</strong>, and cashes out in a nearly-free early-abort that cuts ~47% compute.</li>
+ </ol></div>
+ <div class="box keyidea"><span class="tag">The one-line "so what"</span>
+ This is a <strong>predictability map</strong> of how and where image models commit to their own mistakes — an interpretability result that a statistician can read entirely as AUC over (time × depth), reported with unusual honesty about its noisy label.</div>
+</section>
+
+<!-- 34. closing -->
+<section class="title-slide" data-background-color="#12233f">
+ <div class="divider" style="text-align:center;align-items:center">
+ <div class="kicker">Thank you</div>
+ <h2 style="font-size:1.5em">Failure is legible — early, linearly, and at a specific depth.</h2>
+ <p style="max-width:24em;text-align:center">When does a diffusion model know it will fail? From step 1.</p>
+ <p style="opacity:.7;font-size:.7em">Anonymous · Research overview</p>
+ </div>
+</section>
+
+</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/plugin/notes/notes.min.js"></script>
+<script>
+window.MathJax = { tex:{inlineMath:[['\\(','\\)']], displayMath:[['\\[','\\]']]}, svg:{fontCache:'global'} };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+Reveal.initialize({
+ hash:true, slideNumber:'c/t', width:1280, height:800, margin:0.045,
+ transition:'slide', controls:true, progress:true, center:true,
+ plugins:[ RevealNotes ]
+});
+</script>
+</body>
+</html>
