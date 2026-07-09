@@ -43,3 +43,7 @@ v2/_cache/
 v2/figures/
 v2/E6_qual/
 v2/**/*.png
+
+# v3 heavy data symlink -> /mnt/models/idp_v3 (scratch); not backed up
+v3
+v3/
